@@ -34,6 +34,7 @@ import org.opencv.videoio.Videoio;
 import java.io.File;
 import java.lang.reflect.Field;
 import java.nio.file.Paths;
+import java.util.Vector;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -86,9 +87,7 @@ public class MainActivity extends AppCompatActivity {
         if(!isFlashAvailable)
             Toast.makeText(getApplicationContext(), "There is no flash available", Toast.LENGTH_LONG).show();
 
-        process_HR_video();
-        // TODO: Uncomment this!
-//        startActivityForResult(intent, REQUEST_VIDEO_CAPTURE);
+        startActivityForResult(intent, REQUEST_VIDEO_CAPTURE);
     }
 
     @Override
@@ -99,18 +98,13 @@ public class MainActivity extends AppCompatActivity {
                         Toast.LENGTH_LONG).show();
                 VideoView videoView = new VideoView(this);
                 videoView.setVideoURI(data.getData());
-
                 process_HR_video();
-
-                //AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                //builder.setView(videoView).show();
             } else if (resultCode==RESULT_CANCELED){
                 Toast.makeText(getApplicationContext(), "Video recording cancelled", Toast.LENGTH_LONG).show();
             } else {
                 Toast.makeText(getApplicationContext(), "Failed to record video",
                         Toast.LENGTH_LONG).show();
             }
-
         } else {
             Toast.makeText(getApplicationContext(), "Video recording failed", Toast.LENGTH_SHORT).show();
         }
@@ -129,9 +123,9 @@ public class MainActivity extends AppCompatActivity {
 
         ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, 1);
 
-        //TODO: Uncomment these!
-//        int rc = FFmpeg.execute("-i " + filePathMP4 + " -vcodec mjpeg -y -t 45 " + filePathMJPEG);
-//        int rc2 = FFmpeg.execute("-i " + filePathMJPEG+" -vcodec copy -y -t 45 " + filePathAVI);
+        //TODO: Uncomment these when new video is there
+        int rc = FFmpeg.execute("-i " + filePathMP4 + " -vcodec mjpeg -y -t 45 " + filePathMJPEG);
+        int rc2 = FFmpeg.execute("-i " + filePathMJPEG+" -vcodec copy -y -t 45 " + filePathAVI);
 
         VideoCapture HRvideo = new VideoCapture(filePathAVI);
 
@@ -142,36 +136,59 @@ public class MainActivity extends AppCompatActivity {
 
         int chunks = 9;
         int frame_total_count = (int) HRvideo.get(Videoio.CV_CAP_PROP_FRAME_COUNT);
-        int fpc = frame_total_count/chunks;
+        int frames_per_chunk = frame_total_count/chunks;
         int frame_count = 0;
-
-//        int frame_no = (int) HRvideo.get(Videoio.CV_CAP_PROP_POS_FRAMES, percent); // GET starting frame
+        double avg_HR = 0.0;
 
         for (int i=0; i<9; i+=1){
-            int start_frame = i*fpc;
-            int end_frame = (start_frame+fpc-1);
-            Log.d(TAG, "[+] Chunk "+i+" s: "+start_frame+" e: "+end_frame);
-//            get_chunk_readings_vector(HRvideo, start_frame, end_frame);
+            int start_frame = i*frames_per_chunk;
+            int end_frame = (start_frame+frames_per_chunk-1);
+            Log.d(TAG, "[+] Chunk "+i+" stt: "+start_frame+" end: "+end_frame);
+            avg_HR += get_avg_HR(HRvideo, start_frame, frames_per_chunk, frame_total_count);
         }
 
-        return;
-
-//        while (true){
-//            if(HRvideo.read(frame)){
-//
-//
-//                Mat red_channel = Mat.zeros(frame.rows(), frame.cols(), CvType.CV_32F);
-//                Core.extractChannel(frame, red_channel, 0);
-//                double mu = Core.mean(red_channel).val[0];
-//                // Get all mean frame values
-//                // Do zero crossing extraction
-//                frame_count += 1;
-//            } if (frame.empty()){
-//                break;
-//            }
-//        }
-//        Log.d(TAG, "[+]: Frame count " + frame_total_count);
+        Log.d(TAG, "[+]: Final average Heart Rate "+avg_HR/chunks);
+        Toast.makeText(this, "[+]: Final average Heart Rate "+avg_HR/chunks, Toast.LENGTH_LONG).show();
     }
 
+    private double get_avg_HR(VideoCapture HRvideo, int start_frame, int fpc, int frames_total) {
 
+        Vector<Double> mean_Rs = new Vector<>();
+        Vector<Double> zero_crossings = new Vector<>();
+
+        Mat frame = new Mat();
+        Mat red_channel = Mat.zeros(frame.rows(), frame.cols(), CvType.CV_32F);
+        int fc = 0; // Frame count
+        double avg_HR = 0.0;
+        double seconds = fpc/HRvideo.get(Videoio.CV_CAP_PROP_FPS);
+
+        HRvideo.set(Videoio.CV_CAP_PROP_POS_FRAMES, start_frame); // GET starting frame
+        Log.d(TAG, "[+]: STARTING ON " + HRvideo.get(Videoio.CV_CAP_PROP_POS_FRAMES));
+
+        // Calculate mean red channel values and store them into a vector
+        while (fc < fpc){
+            if (HRvideo.read(frame)){
+                Core.extractChannel(frame, red_channel, 0);
+                mean_Rs.add(Core.mean(red_channel).val[0]);
+                fc += 1;
+            }
+        }
+
+        double prev_val = 0.0;
+        for(int i=1; i<mean_Rs.size(); i+=1) {
+            double val = mean_Rs.get(i)-mean_Rs.get(i-1);
+            Log.d(TAG, "Cur: "+val);
+            if((val > 0 && prev_val < 0) || (val < 0 && prev_val > 0)){
+                avg_HR += 1;
+            }
+
+            if(val != 0.0){
+                prev_val = val;
+            }
+        }
+
+        double avg_HR_rpm = ((avg_HR-1) * 60) / (2.0 * 10.0 * seconds);
+        Log.d(TAG, "Mean RPM this chunk: "+avg_HR_rpm);
+        return avg_HR_rpm;
+    }
 }
