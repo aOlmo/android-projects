@@ -123,7 +123,6 @@ public class MainActivity extends AppCompatActivity {
 
         ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, 1);
 
-        //TODO: Uncomment these when new video is there
         int rc = FFmpeg.execute("-i " + filePathMP4 + " -vcodec mjpeg -y -t 45 " + filePathMJPEG);
         int rc2 = FFmpeg.execute("-i " + filePathMJPEG+" -vcodec copy -y -t 45 " + filePathAVI);
 
@@ -134,16 +133,17 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        int chunks = 9;
-        int frame_total_count = (int) HRvideo.get(Videoio.CV_CAP_PROP_FRAME_COUNT);
-        int frames_per_chunk = frame_total_count/chunks;
-        int frame_count = 0;
         double avg_HR = 0.0;
+        int frame_total_count = (int) HRvideo.get(Videoio.CV_CAP_PROP_FRAME_COUNT);
+        double fps = HRvideo.get(Videoio.CV_CAP_PROP_FPS);
+        int chunks = (int) (frame_total_count/fps)/3;
+        if(chunks==0) chunks = 1;
+        int frames_per_chunk = frame_total_count/chunks;
 
-        for (int i=0; i<9; i+=1){
+        for (int i=0; i<chunks; i+=1){
             int start_frame = i*frames_per_chunk;
             int end_frame = (start_frame+frames_per_chunk-1);
-            Log.d(TAG, "[+] Chunk "+i+" stt: "+start_frame+" end: "+end_frame);
+            Log.d(TAG, "[+] Chunk "+i+"/"+(chunks-1)+" stt: "+start_frame+" end: "+end_frame);
             avg_HR += get_avg_HR(HRvideo, start_frame, frames_per_chunk, frame_total_count);
         }
 
@@ -154,12 +154,14 @@ public class MainActivity extends AppCompatActivity {
     private double get_avg_HR(VideoCapture HRvideo, int start_frame, int fpc, int frames_total) {
 
         Vector<Double> mean_Rs = new Vector<>();
-        Vector<Double> zero_crossings = new Vector<>();
+        Vector<Double> avg_vector = new Vector<>();
 
+        int THRESHOLD = 10;
+        int AVG_WINDOW = 10;
         Mat frame = new Mat();
         Mat red_channel = Mat.zeros(frame.rows(), frame.cols(), CvType.CV_32F);
         int fc = 0; // Frame count
-        double avg_HR = 0.0;
+        double n_peaks = 0.0;
         double seconds = fpc/HRvideo.get(Videoio.CV_CAP_PROP_FPS);
 
         HRvideo.set(Videoio.CV_CAP_PROP_POS_FRAMES, start_frame); // GET starting frame
@@ -174,12 +176,24 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
+        // Compute the running average with a window
+        for(int i=0; i<mean_Rs.size()-AVG_WINDOW; i+=1) {
+            double running_avg = 0;
+            for(int j=i; j<i+AVG_WINDOW; j+=1){
+                running_avg += mean_Rs.get(j);
+            }
+            avg_vector.add(running_avg/AVG_WINDOW);
+            Log.d(TAG,"Running avg: "+running_avg/AVG_WINDOW);
+        }
+
         double prev_val = 0.0;
-        for(int i=1; i<mean_Rs.size(); i+=1) {
-            double val = mean_Rs.get(i)-mean_Rs.get(i-1);
+        for(int i=1; i<avg_vector.size(); i+=1) {
+            double val = avg_vector.get(i)-avg_vector.get(i-1);
             Log.d(TAG, "Cur: "+val);
             if((val > 0 && prev_val < 0) || (val < 0 && prev_val > 0)){
-                avg_HR += 1;
+                if(Math.abs(val-prev_val)>=THRESHOLD) {
+                    n_peaks += 1;
+                }
             }
 
             if(val != 0.0){
@@ -187,7 +201,7 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        double avg_HR_rpm = ((avg_HR-1) * 60) / (2.0 * 10.0 * seconds);
+        double avg_HR_rpm = ((n_peaks) * 60) / (2.0 * seconds);
         Log.d(TAG, "Mean RPM this chunk: "+avg_HR_rpm);
         return avg_HR_rpm;
     }
