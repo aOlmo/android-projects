@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:id="@+id/item1"
+        android:title="Nausea"/>
+    <item android:id="@+id/item2"
+        android:title="Headache"/>
+    <item android:id="@+id/item3"
+        android:title="Diarrhea"/>
+    <item android:id="@+id/item4"
+        android:title="Soar Throat"/>
+    <item android:id="@+id/item5"
+        android:title="Fever"/>
+    <item android:id="@+id/item6"
+        android:title="Muscle Ache"/>
+    <item android:id="@+id/item7"
+        android:title="Loss of Smell or Taste"/>
+    <item android:id="@+id/item8"
+        android:title="Cough"/>
+    <item android:id="@+id/item9"
+        android:title="Shortness of Breath"/>
+    <item android:id="@+id/item10"
+        android:title="Feeling Tired"/>
+</menu>
