@@ -6,8 +6,13 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
 import android.Manifest;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
@@ -44,11 +49,15 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Vector;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements SensorEventListener {
 
     static final int REQUEST_VIDEO_CAPTURE = 1;
     private Uri fileUri;
     private VideoView videoView;
+    private SensorManager sensorManager;
+    Sensor accelerometer;
+    private Vector<Float> accXaxis = new Vector<>();
+    private Vector<Float> accZaxis = new Vector<>();
 
     private static String TAG = "MainActivity";
 
@@ -64,7 +73,6 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
 
         Button button = (Button)findViewById(R.id.buttonUploadSigns);
         button.setOnClickListener(new View.OnClickListener() {
@@ -97,6 +105,49 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {
+
+    }
+
+    @Override
+    public void onSensorChanged(SensorEvent event) {
+        accXaxis.add(event.values[0]);
+        accZaxis.add(event.values[2]);
+        Log.d(TAG, "onSensorChanged: X: "+event.values[0]+"onSensorChanged: Y: "+event.values[1]+"onSensorChanged: Z: "+event.values[2]);
+    }
+
+    private void processRR(){
+        Log.d(TAG, Arrays.toString(accXaxis.toArray()));
+    }
+
+    public void getRR(View view){
+        sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+        accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+
+        Button startRR = (Button) findViewById(R.id.startRR);
+        Button stopRR = (Button) findViewById(R.id.stopRR);
+
+
+        switch(view.getId()) {
+            case R.id.startRR:
+                sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL);
+                startRR.setVisibility(View.GONE);
+                stopRR.setVisibility(View.VISIBLE);
+                break;
+
+            case R.id.stopRR:
+                sensorManager.unregisterListener(this);
+                stopRR.setVisibility(View.GONE);
+                startRR.setVisibility(View.VISIBLE);
+                Toast.makeText(getApplicationContext(), "Finished recording", Toast.LENGTH_LONG).show();
+                processRR();
+                break;
+        }
+    }
+
+
+
     public void getHRVideo(View view) {
         File mediaFile = new File(Environment.getExternalStorageDirectory().getAbsolutePath()
         + "/HeartRate.mp4");
@@ -114,20 +165,20 @@ public class MainActivity extends AppCompatActivity {
                 .hasSystemFeature(PackageManager.FEATURE_CAMERA_FLASH);
         if(!isFlashAvailable)
             Toast.makeText(getApplicationContext(), "There is no flash available", Toast.LENGTH_LONG).show();
-        processHRVideo();
-//        startActivityForResult(intent, REQUEST_VIDEO_CAPTURE);
+//        processHRVideo();
+        startActivityForResult(intent, REQUEST_VIDEO_CAPTURE);
     }
 
-    private void processHRVideo() {
+    private void processHRVideo(){
         Mat frame = new Mat();
         String filePathMP4 = Environment.getExternalStorageDirectory().getAbsolutePath() + "/HeartRate.mp4";
         String filePathMJPEG = Environment.getExternalStorageDirectory().getAbsolutePath() + "/HeartRate.mjpeg";
         String filePathAVI = Environment.getExternalStorageDirectory().getAbsolutePath() + "/HeartRate.avi";
 
         ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, 1);
-        // TODO: Remove this
-//        int rc = FFmpeg.execute("-i " + filePathMP4 + " -vcodec mjpeg -y -t 45 " + filePathMJPEG);
-//        int rc2 = FFmpeg.execute("-i " + filePathMJPEG+" -vcodec copy -y -t 45 " + filePathAVI);
+
+        int rc = FFmpeg.execute("-i " + filePathMP4 + " -vcodec mjpeg -y -t 45 " + filePathMJPEG);
+        int rc2 = FFmpeg.execute("-i " + filePathMJPEG+" -vcodec copy -y -t 45 " + filePathAVI);
 
         VideoCapture HRvideo = new VideoCapture(filePathAVI);
 
@@ -160,7 +211,7 @@ public class MainActivity extends AppCompatActivity {
         Vector<Double> avg_vector = new Vector<>();
 
         double THRESHOLD = 4;
-        int AVG_WINDOW = 15;
+        int AVG_WINDOW = 10;
         Mat frame = new Mat();
         Mat red_channel = Mat.zeros(frame.rows(), frame.cols(), CvType.CV_32F);
         int fc = 0; // Frame count
@@ -191,9 +242,7 @@ public class MainActivity extends AppCompatActivity {
             //Log.d(TAG,"Running avg: "+running_avg/AVG_WINDOW);
         }
 
-        Object[] test = avg_vector.toArray();
         write("/avg_HR.txt", avg_vector.toArray());
-
         Log.d(TAG, Arrays.toString(avg_vector.toArray()));
 
         int AROUND_NVALS = 15;
@@ -216,13 +265,12 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        double avg_HR_rpm = ((n_peaks-1) * 60) / (seconds);
+        double avg_HR_rpm = ((n_peaks) * 60) / (seconds);
         Log.d(TAG, "Mean RPM this chunk: "+avg_HR_rpm);
         return avg_HR_rpm;
     }
 
     public static void write (String filename, Object[] x) {
-
         filename = Environment.getExternalStorageDirectory().getAbsolutePath()
                 + filename;
 

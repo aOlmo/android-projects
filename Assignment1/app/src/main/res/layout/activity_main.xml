@@ -34,10 +34,23 @@
         app:layout_constraintStart_toStartOf="parent" />
 
     <Button
-        android:id="@+id/buttonRR"
+        android:id="@+id/startRR"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:onClick="getRR"
         android:text="Measure Respiratory Rate"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/buttonHR" />
+
+    <Button
+        android:id="@+id/stopRR"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:onClick="getRR"
+        android:text="Stop Recording"
+        android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -48,7 +61,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="TextRR"
-        app:layout_constraintBottom_toTopOf="@+id/buttonRR"
+        app:layout_constraintBottom_toTopOf="@+id/startRR"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
 
