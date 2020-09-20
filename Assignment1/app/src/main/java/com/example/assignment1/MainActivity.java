@@ -22,6 +22,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ExpandableListAdapter;
+import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.VideoView;
 
@@ -37,6 +38,7 @@ import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.videoio.VideoCapture;
 import org.opencv.videoio.Videoio;
+import org.w3c.dom.Text;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -47,12 +49,14 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.lang.reflect.Field;
 import java.nio.file.Paths;
+import java.text.DecimalFormat;
 import java.util.Arrays;
 import java.util.Vector;
 
 public class MainActivity extends AppCompatActivity implements SensorEventListener {
 
     static final int REQUEST_VIDEO_CAPTURE = 1;
+    private DecimalFormat df = new DecimalFormat("0.00");
     private Uri fileUri;
     private VideoView videoView;
     private SensorManager sensorManager;
@@ -78,7 +82,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        Button button = (Button)findViewById(R.id.buttonUploadSigns);
+        Button button = (Button) findViewById(R.id.buttonUploadSigns);
         button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -120,17 +124,21 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     }
 
     private void processRR(){
+        double bpm;
+        int nPeaks;
         int AVG_WINDOW = 2;
         int AROUND_PEAKS = 3;
-        int nPeaks;
-        double bpm;
         long elapsedTime = (this.end - this.start)/1000;
 
-        // TODO: This can be further improved with proximity sensor
+        TextView textRR = (TextView) findViewById(R.id.textRR);
+
+        // This can be further improved with proximity sensor
         Log.d(TAG, Arrays.toString(accZaxis.toArray()));
         nPeaks = doAverageAndCountPeaks(accZaxis, AVG_WINDOW, AROUND_PEAKS);
-        nPeaks -= 2; // Remove the beginning and end peaks
+        nPeaks -= 2; // Remove the beginning and end peaks of getting close to the chest
         bpm = (nPeaks*60.)/elapsedTime;
+
+        textRR.setText("BPM: "+df.format(bpm));
         Toast.makeText(this, "P: "+nPeaks+" BPM: "+bpm, Toast.LENGTH_LONG).show();
     }
 
@@ -181,6 +189,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     private void processHRVideo(){
         Mat frame = new Mat();
+        TextView textHR = (TextView) findViewById(R.id.textHR);
         String filePathMP4 = Environment.getExternalStorageDirectory().getAbsolutePath() + "/HeartRate.mp4";
         String filePathMJPEG = Environment.getExternalStorageDirectory().getAbsolutePath() + "/HeartRate.mjpeg";
         String filePathAVI = Environment.getExternalStorageDirectory().getAbsolutePath() + "/HeartRate.avi";
@@ -216,6 +225,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             avg_HR += foo.getAvgHR();
         }
 
+        textHR.setText("HR: "+df.format(avg_HR/chunks));
         Log.d(TAG, "[+]: Final average Heart Rate "+avg_HR/chunks);
         Toast.makeText(this, "[+]: Final average Heart Rate "+avg_HR/chunks, Toast.LENGTH_LONG).show();
     }
@@ -291,9 +301,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         @Override
         public void run() {
-
             Vector<Double> mean_Rs = new Vector<>();
-            Vector<Double> avg_vector = new Vector<>();
 
             int AVG_WINDOW = 10;
             int AROUND_NVALS = 15;
