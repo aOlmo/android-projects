@@ -21,6 +21,7 @@ import android.provider.MediaStore;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ExpandableListAdapter;
 import android.widget.Toast;
 import android.widget.VideoView;
 
@@ -56,8 +57,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private VideoView videoView;
     private SensorManager sensorManager;
     Sensor accelerometer;
-    private Vector<Float> accXaxis = new Vector<>();
-    private Vector<Float> accZaxis = new Vector<>();
+
+    private Vector<Double> accZaxis = new Vector<>();
 
     private static String TAG = "MainActivity";
 
@@ -68,6 +69,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             Log.d(TAG, "OpenCV not loaded properly");
         }
     }
+
+    private long start;
+    private long end;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -112,13 +116,22 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     @Override
     public void onSensorChanged(SensorEvent event) {
-        accXaxis.add(event.values[0]);
-        accZaxis.add(event.values[2]);
-        Log.d(TAG, "onSensorChanged: X: "+event.values[0]+"onSensorChanged: Y: "+event.values[1]+"onSensorChanged: Z: "+event.values[2]);
+        accZaxis.add((double) event.values[2]);
     }
 
     private void processRR(){
-        Log.d(TAG, Arrays.toString(accXaxis.toArray()));
+        int AVG_WINDOW = 2;
+        int AROUND_PEAKS = 3;
+        int nPeaks;
+        double bpm;
+        long elapsedTime = (this.end - this.start)/1000;
+
+        // TODO: This can be further improved with proximity sensor
+        Log.d(TAG, Arrays.toString(accZaxis.toArray()));
+        nPeaks = doAverageAndCountPeaks(accZaxis, AVG_WINDOW, AROUND_PEAKS);
+        nPeaks -= 2; // Remove the beginning and end peaks
+        bpm = (nPeaks*60.)/elapsedTime;
+        Toast.makeText(this, "P: "+nPeaks+" BPM: "+bpm, Toast.LENGTH_LONG).show();
     }
 
     public void getRR(View view){
@@ -128,25 +141,23 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         Button startRR = (Button) findViewById(R.id.startRR);
         Button stopRR = (Button) findViewById(R.id.stopRR);
 
-
         switch(view.getId()) {
             case R.id.startRR:
+                start = System.currentTimeMillis();
                 sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL);
                 startRR.setVisibility(View.GONE);
                 stopRR.setVisibility(View.VISIBLE);
                 break;
 
             case R.id.stopRR:
+                end = System.currentTimeMillis();
                 sensorManager.unregisterListener(this);
                 stopRR.setVisibility(View.GONE);
                 startRR.setVisibility(View.VISIBLE);
-                Toast.makeText(getApplicationContext(), "Finished recording", Toast.LENGTH_LONG).show();
                 processRR();
                 break;
         }
     }
-
-
 
     public void getHRVideo(View view) {
         File mediaFile = new File(Environment.getExternalStorageDirectory().getAbsolutePath()
@@ -165,7 +176,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 .hasSystemFeature(PackageManager.FEATURE_CAMERA_FLASH);
         if(!isFlashAvailable)
             Toast.makeText(getApplicationContext(), "There is no flash available", Toast.LENGTH_LONG).show();
-//        processHRVideo();
         startActivityForResult(intent, REQUEST_VIDEO_CAPTURE);
     }
 
@@ -198,76 +208,55 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             int start_frame = i*frames_per_chunk;
             int end_frame = (start_frame+frames_per_chunk-1);
             Log.d(TAG, "[+] Chunk "+i+"/"+(chunks-1)+" stt: "+start_frame+" end: "+end_frame);
-            avg_HR += getAvgHR(HRvideo, start_frame, frames_per_chunk, frame_total_count);
+
+            processVideoThread foo = new processVideoThread(HRvideo, start_frame, frames_per_chunk);
+            Thread thread = new Thread(foo);
+            thread.start();
+            try { thread.join(); } catch (InterruptedException e) { e.printStackTrace(); }
+            avg_HR += foo.getAvgHR();
         }
 
         Log.d(TAG, "[+]: Final average Heart Rate "+avg_HR/chunks);
         Toast.makeText(this, "[+]: Final average Heart Rate "+avg_HR/chunks, Toast.LENGTH_LONG).show();
     }
 
-    private double getAvgHR(VideoCapture HRvideo, int start_frame, int fpc, int frames_total) {
-
-        Vector<Double> mean_Rs = new Vector<>();
-        Vector<Double> avg_vector = new Vector<>();
-
-        double THRESHOLD = 4;
-        int AVG_WINDOW = 10;
-        Mat frame = new Mat();
-        Mat red_channel = Mat.zeros(frame.rows(), frame.cols(), CvType.CV_32F);
-        int fc = 0; // Frame count
-        double n_peaks = 0.0;
-        double seconds = fpc/HRvideo.get(Videoio.CV_CAP_PROP_FPS);
-
-        HRvideo.set(Videoio.CV_CAP_PROP_POS_FRAMES, start_frame); // GET starting frame
-        Log.d(TAG, "[+]: STARTING ON " + HRvideo.get(Videoio.CV_CAP_PROP_POS_FRAMES));
-
-        // Calculate mean red channel values and store them into a vector
-        while (fc < fpc){
-            if (HRvideo.read(frame)){
-                Core.extractChannel(frame, red_channel, 0);
-                mean_Rs.add(Core.mean(red_channel).val[0]);
-                fc += 1;
-            }
-        }
-
-        write("/mean_Rs.txt", mean_Rs.toArray());
+    private int doAverageAndCountPeaks(Vector<Double> noisyVector, int AVG_WINDOW, int AROUND_NVALS) {
+        Vector<Double> meanVector = new Vector<>();
+        int n_peaks = 0;
+        write("/noisyVector.txt", noisyVector.toArray());
 
         // Compute the running average with a window
-        for(int i=0; i<mean_Rs.size()-AVG_WINDOW; i+=1) {
+        for (int i = 0; i < noisyVector.size() - AVG_WINDOW; i += 1) {
             double running_avg = 0;
-            for(int j=i; j<i+AVG_WINDOW; j+=1){
-                running_avg += mean_Rs.get(j);
+            for (int j = i; j < i + AVG_WINDOW; j += 1) {
+                running_avg += noisyVector.get(j);
             }
-            avg_vector.add(running_avg/AVG_WINDOW);
-            //Log.d(TAG,"Running avg: "+running_avg/AVG_WINDOW);
+            meanVector.add(running_avg / AVG_WINDOW);
         }
 
-        write("/avg_HR.txt", avg_vector.toArray());
-        Log.d(TAG, Arrays.toString(avg_vector.toArray()));
+        write("/meanVector.txt", meanVector.toArray());
+        //Log.d(TAG, Arrays.toString(meanVector.toArray()));
 
-        int AROUND_NVALS = 15;
-        for(int i=0; i<avg_vector.size(); i+=1) {
-            double cur_value = avg_vector.get(i);
+        for (int i = 0; i < meanVector.size(); i += 1) {
+            double cur_value = meanVector.get(i);
             int max_val = i;
-            int left_margin = (i-AROUND_NVALS < 0) ? i : AROUND_NVALS;
-            int right_margin = (i+AROUND_NVALS > avg_vector.size()) ? avg_vector.size()-i-1 : AROUND_NVALS;
+            int left_margin = (i - AROUND_NVALS < 0) ? i : AROUND_NVALS;
+            int right_margin = (i + AROUND_NVALS > meanVector.size()) ? meanVector.size() - i - 1 : AROUND_NVALS;
 
-            for(int j=-left_margin; j<right_margin; j+=1){
-                double aux_val = avg_vector.get(i+j);
-                if(aux_val > cur_value){
-                    max_val = i+j;
+            for (int j = -left_margin; j < right_margin; j += 1) {
+                double aux_val = meanVector.get(i + j);
+                if (aux_val > cur_value) {
+                    max_val = i + j;
                     break;
                 }
             }
-            if(max_val == i){
-                Log.d(TAG, "[+]: peak: "+i+" val: "+ cur_value);
+            if (max_val == i) {
+                Log.d(TAG, "[+]: peak: " + i + " val: " + cur_value);
                 n_peaks += 1;
             }
         }
 
-        double avg_HR_rpm = ((n_peaks) * 60) / (seconds);
-        Log.d(TAG, "Mean RPM this chunk: "+avg_HR_rpm);
-        return avg_HR_rpm;
+        return n_peaks;
     }
 
     public static void write (String filename, Object[] x) {
@@ -288,6 +277,55 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         }
     }
 
+    public class processVideoThread implements Runnable{
+        private volatile int fpc;
+        private volatile double avgHR;
+        private volatile int startFrame;
+        private volatile VideoCapture HRvideo;
 
+        processVideoThread(VideoCapture HRvideo, int startFrame, int fpc){
+            this.fpc = fpc;
+            this.startFrame = startFrame;
+            this.HRvideo = HRvideo;
+        }
+
+        @Override
+        public void run() {
+
+            Vector<Double> mean_Rs = new Vector<>();
+            Vector<Double> avg_vector = new Vector<>();
+
+            int AVG_WINDOW = 10;
+            int AROUND_NVALS = 15;
+            Mat frame = new Mat();
+            Mat red_channel = Mat.zeros(frame.rows(), frame.cols(), CvType.CV_32F);
+            int fc = 0; // Frame count
+            int n_peaks;
+            double seconds = fpc/HRvideo.get(Videoio.CV_CAP_PROP_FPS);
+
+            HRvideo.set(Videoio.CV_CAP_PROP_POS_FRAMES, startFrame); // GET starting frame
+            Log.d(TAG, "[+]: STARTING ON " + HRvideo.get(Videoio.CV_CAP_PROP_POS_FRAMES));
+
+            // Calculate mean red channel values and store them into a vector
+            while (fc < fpc){
+                if (HRvideo.read(frame)){
+                    Core.extractChannel(frame, red_channel, 0);
+                    mean_Rs.add(Core.mean(red_channel).val[0]);
+                    fc += 1;
+                }
+            }
+
+            n_peaks = doAverageAndCountPeaks(mean_Rs, AVG_WINDOW, AROUND_NVALS);
+
+            double avg_HR_rpm = ((n_peaks) * 60) / (seconds);
+            Log.d(TAG, "Mean RPM this chunk: "+avg_HR_rpm);
+            this.avgHR = avg_HR_rpm;
+        }
+
+        public double getAvgHR(){
+            return avgHR;
+        }
+
+    }
 
 }
