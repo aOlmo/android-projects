@@ -28,12 +28,20 @@ import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.Scalar;
+import org.opencv.core.Size;
 import org.opencv.videoio.VideoCapture;
 import org.opencv.videoio.Videoio;
 
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.lang.reflect.Field;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Vector;
 
 public class MainActivity extends AppCompatActivity {
@@ -69,6 +77,26 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        if(requestCode==REQUEST_VIDEO_CAPTURE) {
+            if(resultCode==RESULT_OK){
+                Toast.makeText(getApplicationContext(), "Video saved to:\n" + data.getData(),
+                        Toast.LENGTH_LONG).show();
+                VideoView videoView = new VideoView(this);
+                videoView.setVideoURI(data.getData());
+                processHRVideo();
+            } else if (resultCode==RESULT_CANCELED){
+                Toast.makeText(getApplicationContext(), "Video recording cancelled", Toast.LENGTH_LONG).show();
+            } else {
+                Toast.makeText(getApplicationContext(), "Failed to record video",
+                        Toast.LENGTH_LONG).show();
+            }
+        } else {
+            Toast.makeText(getApplicationContext(), "Video recording failed", Toast.LENGTH_SHORT).show();
+        }
+    }
+
     public void getHRVideo(View view) {
         File mediaFile = new File(Environment.getExternalStorageDirectory().getAbsolutePath()
         + "/HeartRate.mp4");
@@ -86,45 +114,20 @@ public class MainActivity extends AppCompatActivity {
                 .hasSystemFeature(PackageManager.FEATURE_CAMERA_FLASH);
         if(!isFlashAvailable)
             Toast.makeText(getApplicationContext(), "There is no flash available", Toast.LENGTH_LONG).show();
-
-        startActivityForResult(intent, REQUEST_VIDEO_CAPTURE);
+        processHRVideo();
+//        startActivityForResult(intent, REQUEST_VIDEO_CAPTURE);
     }
 
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        if(requestCode==REQUEST_VIDEO_CAPTURE) {
-            if(resultCode==RESULT_OK){
-                Toast.makeText(getApplicationContext(), "Video saved to:\n" + data.getData(),
-                        Toast.LENGTH_LONG).show();
-                VideoView videoView = new VideoView(this);
-                videoView.setVideoURI(data.getData());
-                process_HR_video();
-            } else if (resultCode==RESULT_CANCELED){
-                Toast.makeText(getApplicationContext(), "Video recording cancelled", Toast.LENGTH_LONG).show();
-            } else {
-                Toast.makeText(getApplicationContext(), "Failed to record video",
-                        Toast.LENGTH_LONG).show();
-            }
-        } else {
-            Toast.makeText(getApplicationContext(), "Video recording failed", Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    private void process_HR_video() {
+    private void processHRVideo() {
         Mat frame = new Mat();
-        String filePathMP4 = Environment.getExternalStorageDirectory().getAbsolutePath()
-                + "/HeartRate.mp4";
-
-        String filePathMJPEG = Environment.getExternalStorageDirectory().getAbsolutePath()
-                + "/HeartRate.mjpeg";
-
-        String filePathAVI = Environment.getExternalStorageDirectory().getAbsolutePath()
-                + "/HeartRate.avi";
+        String filePathMP4 = Environment.getExternalStorageDirectory().getAbsolutePath() + "/HeartRate.mp4";
+        String filePathMJPEG = Environment.getExternalStorageDirectory().getAbsolutePath() + "/HeartRate.mjpeg";
+        String filePathAVI = Environment.getExternalStorageDirectory().getAbsolutePath() + "/HeartRate.avi";
 
         ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, 1);
-
-        int rc = FFmpeg.execute("-i " + filePathMP4 + " -vcodec mjpeg -y -t 45 " + filePathMJPEG);
-        int rc2 = FFmpeg.execute("-i " + filePathMJPEG+" -vcodec copy -y -t 45 " + filePathAVI);
+        // TODO: Remove this
+//        int rc = FFmpeg.execute("-i " + filePathMP4 + " -vcodec mjpeg -y -t 45 " + filePathMJPEG);
+//        int rc2 = FFmpeg.execute("-i " + filePathMJPEG+" -vcodec copy -y -t 45 " + filePathAVI);
 
         VideoCapture HRvideo = new VideoCapture(filePathAVI);
 
@@ -136,7 +139,7 @@ public class MainActivity extends AppCompatActivity {
         double avg_HR = 0.0;
         int frame_total_count = (int) HRvideo.get(Videoio.CV_CAP_PROP_FRAME_COUNT);
         double fps = HRvideo.get(Videoio.CV_CAP_PROP_FPS);
-        int chunks = (int) (frame_total_count/fps)/3;
+        int chunks = (int) (frame_total_count/fps)/5;
         if(chunks==0) chunks = 1;
         int frames_per_chunk = frame_total_count/chunks;
 
@@ -144,20 +147,20 @@ public class MainActivity extends AppCompatActivity {
             int start_frame = i*frames_per_chunk;
             int end_frame = (start_frame+frames_per_chunk-1);
             Log.d(TAG, "[+] Chunk "+i+"/"+(chunks-1)+" stt: "+start_frame+" end: "+end_frame);
-            avg_HR += get_avg_HR(HRvideo, start_frame, frames_per_chunk, frame_total_count);
+            avg_HR += getAvgHR(HRvideo, start_frame, frames_per_chunk, frame_total_count);
         }
 
         Log.d(TAG, "[+]: Final average Heart Rate "+avg_HR/chunks);
         Toast.makeText(this, "[+]: Final average Heart Rate "+avg_HR/chunks, Toast.LENGTH_LONG).show();
     }
 
-    private double get_avg_HR(VideoCapture HRvideo, int start_frame, int fpc, int frames_total) {
+    private double getAvgHR(VideoCapture HRvideo, int start_frame, int fpc, int frames_total) {
 
         Vector<Double> mean_Rs = new Vector<>();
         Vector<Double> avg_vector = new Vector<>();
 
-        int THRESHOLD = 10;
-        int AVG_WINDOW = 10;
+        double THRESHOLD = 4;
+        int AVG_WINDOW = 15;
         Mat frame = new Mat();
         Mat red_channel = Mat.zeros(frame.rows(), frame.cols(), CvType.CV_32F);
         int fc = 0; // Frame count
@@ -176,6 +179,8 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
+        write("/mean_Rs.txt", mean_Rs.toArray());
+
         // Compute the running average with a window
         for(int i=0; i<mean_Rs.size()-AVG_WINDOW; i+=1) {
             double running_avg = 0;
@@ -183,26 +188,58 @@ public class MainActivity extends AppCompatActivity {
                 running_avg += mean_Rs.get(j);
             }
             avg_vector.add(running_avg/AVG_WINDOW);
-            Log.d(TAG,"Running avg: "+running_avg/AVG_WINDOW);
+            //Log.d(TAG,"Running avg: "+running_avg/AVG_WINDOW);
         }
 
-        double prev_val = 0.0;
-        for(int i=1; i<avg_vector.size(); i+=1) {
-            double val = avg_vector.get(i)-avg_vector.get(i-1);
-            Log.d(TAG, "Cur: "+val);
-            if((val > 0 && prev_val < 0) || (val < 0 && prev_val > 0)){
-                if(Math.abs(val-prev_val)>=THRESHOLD) {
-                    n_peaks += 1;
+        Object[] test = avg_vector.toArray();
+        write("/avg_HR.txt", avg_vector.toArray());
+
+        Log.d(TAG, Arrays.toString(avg_vector.toArray()));
+
+        int AROUND_NVALS = 15;
+        for(int i=0; i<avg_vector.size(); i+=1) {
+            double cur_value = avg_vector.get(i);
+            int max_val = i;
+            int left_margin = (i-AROUND_NVALS < 0) ? i : AROUND_NVALS;
+            int right_margin = (i+AROUND_NVALS > avg_vector.size()) ? avg_vector.size()-i-1 : AROUND_NVALS;
+
+            for(int j=-left_margin; j<right_margin; j+=1){
+                double aux_val = avg_vector.get(i+j);
+                if(aux_val > cur_value){
+                    max_val = i+j;
+                    break;
                 }
             }
-
-            if(val != 0.0){
-                prev_val = val;
+            if(max_val == i){
+                Log.d(TAG, "[+]: peak: "+i+" val: "+ cur_value);
+                n_peaks += 1;
             }
         }
 
-        double avg_HR_rpm = ((n_peaks) * 60) / (2.0 * seconds);
+        double avg_HR_rpm = ((n_peaks-1) * 60) / (seconds);
         Log.d(TAG, "Mean RPM this chunk: "+avg_HR_rpm);
         return avg_HR_rpm;
     }
+
+    public static void write (String filename, Object[] x) {
+
+        filename = Environment.getExternalStorageDirectory().getAbsolutePath()
+                + filename;
+
+        try {
+        BufferedWriter outputWriter = null;
+        outputWriter = new BufferedWriter(new FileWriter(filename));
+        for (Object value : x) {
+            outputWriter.write(value + "");
+            outputWriter.newLine();
+        }
+        outputWriter.flush();
+        outputWriter.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+
+
 }
