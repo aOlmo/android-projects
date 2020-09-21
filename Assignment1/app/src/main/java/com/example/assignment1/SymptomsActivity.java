@@ -11,7 +11,13 @@ import android.widget.Toast;
 
 
 public class SymptomsActivity extends Activity implements PopupMenu.OnMenuItemClickListener {
+
+    DatabaseHelper db;
+
+
     protected void onCreate(Bundle savedInstanceState) {
+        db = new DatabaseHelper(this);
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.symptoms_logging_page);
 
