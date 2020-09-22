@@ -11,13 +11,12 @@ import androidx.annotation.Nullable;
 import java.util.Arrays;
 
 public class DatabaseHelper extends SQLiteOpenHelper {
-    public static final String DATABASE_NAME = "Assignment1.db";
-    public static final String TABLE_NAME = "UserReadings";
-    public static String[] COLS = {"NAME","HR","BR","NAUSEA","HEADACHE","DIARRHEA",
-            "SOAR_THROAT","FEVER","MUSCLE_ACHE","LOSS_SMELL_TASTE","COUGH","SHORTNESS_BREATH","TIRED"};
-    private static String TAG = "Database";
     private static SQLiteDatabase db;
-
+    private static String TAG = "Database";
+    public static final String TABLE_NAME = "UserReadings";
+    public static final String DATABASE_NAME = "Assignment1.db";
+    public static String[] COLS = {"NAME","HR","BR","NAUSEA","HEADACHE","DIARRHEA", "SOAR_THROAT",
+            "FEVER","MUSCLE_ACHE","LOSS_SMELL_TASTE","COUGH","SHORTNESS_BREATH","TIRED"};
 
     public DatabaseHelper(@Nullable Context context) {
         super(context, DATABASE_NAME, null, 1);

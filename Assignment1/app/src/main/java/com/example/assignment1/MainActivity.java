@@ -1,7 +1,6 @@
 package com.example.assignment1;
 
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
@@ -21,54 +20,44 @@ import android.provider.MediaStore;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
-import android.widget.ExpandableListAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.VideoView;
 
-import com.arthenica.mobileffmpeg.Config;
 import com.arthenica.mobileffmpeg.FFmpeg;
-import com.arthenica.mobileffmpeg.FFprobe;
 
 import org.opencv.android.OpenCVLoader;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
-import org.opencv.core.Scalar;
-import org.opencv.core.Size;
 import org.opencv.videoio.VideoCapture;
 import org.opencv.videoio.Videoio;
-import org.w3c.dom.Text;
 
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.OutputStreamWriter;
 import java.io.Serializable;
-import java.lang.reflect.Field;
-import java.nio.file.Paths;
 import java.text.DecimalFormat;
 import java.util.Arrays;
 import java.util.Vector;
 
 public class MainActivity extends AppCompatActivity implements SensorEventListener, Serializable {
-    DatabaseHelper db;
 
-    Sensor accelerometer;
-    private Uri fileUri;
-    private VideoView videoView;
-    private SensorManager sensorManager;
-    static final int REQUEST_VIDEO_CAPTURE = 1;
-    private DecimalFormat df = new DecimalFormat("##");
     private float HR;
     private float RR;
-
-    private Vector<Double> accZaxis = new Vector<>();
-
+    private long end;
+    private long start;
+    private Uri fileUri;
+    private DatabaseHelper db;
+    private Sensor accelerometer;
+    private float[] arraySymptoms;
+    private SensorManager sensorManager;
     private static String TAG = "MainActivity";
+    private Vector<Double> accZaxis = new Vector<>();
+    private DecimalFormat df = new DecimalFormat("##");
+
+    static final int REQUEST_VIDEO_CAPTURE = 1;
 
     static {
         if (OpenCVLoader.initDebug()) {
@@ -78,13 +67,21 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         }
     }
 
-    private long start;
-    private long end;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        if (savedInstanceState!=null){
+            TextView textHR = (TextView) findViewById(R.id.textHR);
+            TextView textRR = (TextView) findViewById(R.id.textRR);
+
+            HR = savedInstanceState.getFloat("HR");
+            RR = savedInstanceState.getFloat("BR");
+
+            textHR.setText(""+HR);
+            textRR.setText(""+RR);
+        }
 
         db = new DatabaseHelper(this);
         Button button = (Button) findViewById(R.id.buttonSymptoms);
@@ -99,33 +96,34 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     }
 
     @Override
-    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        if(requestCode==REQUEST_VIDEO_CAPTURE) {
-            if(resultCode==RESULT_OK){
-                Toast.makeText(getApplicationContext(), "Video saved to:\n" + data.getData(),
-                        Toast.LENGTH_LONG).show();
-                VideoView videoView = new VideoView(this);
-                videoView.setVideoURI(data.getData());
-                processHRVideo();
-            } else if (resultCode==RESULT_CANCELED){
-                Toast.makeText(getApplicationContext(), "Video recording cancelled", Toast.LENGTH_LONG).show();
-            } else {
-                Toast.makeText(getApplicationContext(), "Failed to record video",
-                        Toast.LENGTH_LONG).show();
-            }
-        } else {
-            Toast.makeText(getApplicationContext(), "Video recording failed", Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    @Override
-    public void onAccuracyChanged(Sensor sensor, int accuracy) {
-
+    protected void onResume(){
+        super.onResume();
+        arraySymptoms = (float[]) getIntent().getSerializableExtra("arraySymptoms");
     }
 
     @Override
     public void onSensorChanged(SensorEvent event) {
         accZaxis.add((double) event.values[2]);
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle savedInstanceState) {
+        super.onSaveInstanceState(savedInstanceState);
+        savedInstanceState.putFloat("HR", HR);
+        savedInstanceState.putFloat("BR", RR);
+    }
+
+    @Override
+    public void onRestoreInstanceState(@Nullable Bundle savedInstanceState) {
+        super.onRestoreInstanceState(savedInstanceState);
+        TextView textHR = (TextView) findViewById(R.id.textHR);
+        TextView textRR = (TextView) findViewById(R.id.textRR);
+
+        HR = savedInstanceState.getFloat("HR");
+        RR = savedInstanceState.getFloat("BR");
+
+        textHR.setText(""+HR);
+        textRR.setText(""+RR);
     }
 
     private void processRR(){
@@ -295,10 +293,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     }
 
     public void saveDataToDB(View view) {
-
         float[] readingsArray = new float[12];
-        float[] arraySymptoms = (float[]) getIntent().getSerializableExtra("arraySymptoms");
-
         if(arraySymptoms == null){ arraySymptoms = new float[10]; Arrays.fill(arraySymptoms, 0);}
 
         readingsArray[0] = Float.parseFloat(df.format(HR));
@@ -358,4 +353,26 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     }
 
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        if(requestCode==REQUEST_VIDEO_CAPTURE) {
+            if(resultCode==RESULT_OK){
+                Toast.makeText(getApplicationContext(), "Video saved to:\n" + data.getData(),
+                        Toast.LENGTH_LONG).show();
+                VideoView videoView = new VideoView(this);
+                videoView.setVideoURI(data.getData());
+                processHRVideo();
+            } else if (resultCode==RESULT_CANCELED){
+                Toast.makeText(getApplicationContext(), "Video recording cancelled", Toast.LENGTH_LONG).show();
+            } else {
+                Toast.makeText(getApplicationContext(), "Failed to record video",
+                        Toast.LENGTH_LONG).show();
+            }
+        } else {
+            Toast.makeText(getApplicationContext(), "Video recording failed", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {}
 }
