@@ -13,7 +13,6 @@
         android:layout_marginBottom="28dp"
         android:numStars="5"
         android:rating="3.5"
-        android:onClick="changeCurStarRating"
         app:layout_constraintBottom_toTopOf="@+id/buttonUploadSymptoms"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
@@ -34,25 +33,29 @@
         android:id="@+id/TextSymptom"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginEnd="72dp"
-        android:layout_marginRight="72dp"
-        android:text="Fever"
+        android:layout_marginStart="156dp"
+        android:layout_marginLeft="156dp"
+        android:layout_marginBottom="60dp"
         android:onClick="showPopup"
-        app:layout_constraintEnd_toStartOf="@+id/buttonUploadSymptoms"
-        tools:layout_editor_absoluteY="515dp" />
+        android:text="Nausea"
+        app:layout_constraintBottom_toTopOf="@+id/ratingBar1"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="1.0" />
 
     <Button
         android:id="@+id/buttonUploadSymptoms"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:onClick="saveSymptomsToDB"
-        android:text="Upload Symptoms"
+        android:enabled="false"
+        android:onClick="saveCurSymptom"
+        android:text="Save Symptom"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.498"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.838" />
+        app:layout_constraintVertical_bias="0.824" />
 
     <Button
         android:id="@+id/buttonBack"
@@ -64,5 +67,25 @@
         app:layout_constraintHorizontal_bias="0.498"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/buttonUploadSymptoms"
-        app:layout_constraintVertical_bias="0.428" />
+        app:layout_constraintVertical_bias="0.382" />
+
+    <TextView
+        android:id="@+id/textRating"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="60dp"
+        android:text="TextView"
+        app:layout_constraintBottom_toTopOf="@+id/ratingBar1"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.271"
+        app:layout_constraintStart_toEndOf="@+id/TextSymptom"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="1.0" />
+
+    <ListView
+        android:id="@+id/listSymptoms"
+        android:layout_width="295dp"
+        android:layout_height="349dp"
+        tools:layout_editor_absoluteX="58dp"
+        tools:layout_editor_absoluteY="51dp" />
 </androidx.constraintlayout.widget.ConstraintLayout>

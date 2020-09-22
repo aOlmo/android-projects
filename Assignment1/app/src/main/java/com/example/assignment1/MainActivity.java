@@ -47,20 +47,24 @@ import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.io.Serializable;
 import java.lang.reflect.Field;
 import java.nio.file.Paths;
 import java.text.DecimalFormat;
 import java.util.Arrays;
 import java.util.Vector;
 
-public class MainActivity extends AppCompatActivity implements SensorEventListener {
+public class MainActivity extends AppCompatActivity implements SensorEventListener, Serializable {
+    DatabaseHelper db;
 
-    static final int REQUEST_VIDEO_CAPTURE = 1;
-    private DecimalFormat df = new DecimalFormat("0.00");
+    Sensor accelerometer;
     private Uri fileUri;
     private VideoView videoView;
     private SensorManager sensorManager;
-    Sensor accelerometer;
+    static final int REQUEST_VIDEO_CAPTURE = 1;
+    private DecimalFormat df = new DecimalFormat("##");
+    private float HR;
+    private float RR;
 
     private Vector<Double> accZaxis = new Vector<>();
 
@@ -82,7 +86,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        Button button = (Button) findViewById(R.id.buttonUploadSigns);
+        db = new DatabaseHelper(this);
+        Button button = (Button) findViewById(R.id.buttonSymptoms);
         button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -140,6 +145,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         textRR.setText("BPM: "+df.format(bpm));
         Toast.makeText(this, "P: "+nPeaks+" BPM: "+bpm, Toast.LENGTH_LONG).show();
+        RR = (float) bpm;
     }
 
     public void getRR(View view){
@@ -228,6 +234,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         textHR.setText("HR: "+df.format(avg_HR/chunks));
         Log.d(TAG, "[+]: Final average Heart Rate "+avg_HR/chunks);
         Toast.makeText(this, "[+]: Final average Heart Rate "+avg_HR/chunks, Toast.LENGTH_LONG).show();
+        HR = (float) (avg_HR/chunks);
     }
 
     private int doAverageAndCountPeaks(Vector<Double> noisyVector, int AVG_WINDOW, int AROUND_NVALS) {
@@ -285,6 +292,21 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    public void saveDataToDB(View view) {
+
+        float[] readingsArray = new float[12];
+        float[] arraySymptoms = (float[]) getIntent().getSerializableExtra("arraySymptoms");
+
+        if(arraySymptoms == null){ arraySymptoms = new float[10]; Arrays.fill(arraySymptoms, 0);}
+
+        readingsArray[0] = Float.parseFloat(df.format(HR));
+        readingsArray[1] = Float.parseFloat(df.format(RR));
+        System.arraycopy(arraySymptoms, 0, readingsArray, 2, arraySymptoms.length);
+
+        db.saveDataToUserReadings("Alberto", readingsArray);
+
     }
 
     public class processVideoThread implements Runnable{
