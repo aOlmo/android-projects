@@ -12,6 +12,8 @@ import android.widget.RatingBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.core.app.NavUtils;
+
 import java.io.Serializable;
 import java.text.DecimalFormat;
 import java.util.Arrays;
@@ -32,6 +34,8 @@ public class SymptomsActivity extends Activity implements PopupMenu.OnMenuItemCl
 
     private int curSymptomID;
     private float curStarRating;
+    private float HR;
+    private float RR;
 
     public SymptomsActivity(){
         Arrays.fill(arraySymptoms, 0);
@@ -40,16 +44,6 @@ public class SymptomsActivity extends Activity implements PopupMenu.OnMenuItemCl
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.symptoms_logging_page);
-
-        Button back = (Button) findViewById(R.id.buttonBack);
-        back.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent i = new Intent(getApplicationContext(), MainActivity.class);
-                i.putExtra("arraySymptoms", arraySymptoms);
-                startActivity(i);
-            }
-        });
 
         RatingBar ratingBar = (RatingBar) findViewById(R.id.ratingBar1);
         ratingBar.setOnRatingBarChangeListener(new RatingBar.OnRatingBarChangeListener() {
@@ -64,6 +58,13 @@ public class SymptomsActivity extends Activity implements PopupMenu.OnMenuItemCl
             }
         });
 
+    }
+
+    public void goBack(View v){
+        Intent intent = NavUtils.getParentActivityIntent(this);
+        intent.putExtra("arraySymptoms", arraySymptoms);
+//        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        NavUtils.navigateUpTo(this, intent);
     }
 
     public void showPopup(View v){

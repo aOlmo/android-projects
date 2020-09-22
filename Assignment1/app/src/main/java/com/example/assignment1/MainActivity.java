@@ -1,12 +1,15 @@
 package com.example.assignment1;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
 import android.Manifest;
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
@@ -42,10 +45,10 @@ import java.text.DecimalFormat;
 import java.util.Arrays;
 import java.util.Vector;
 
-public class MainActivity extends AppCompatActivity implements SensorEventListener, Serializable {
+public class MainActivity extends Activity implements SensorEventListener, Serializable {
 
-    private float HR;
-    private float RR;
+    private float HR = 0;
+    private float RR = 0;
     private long end;
     private long start;
     private Uri fileUri;
@@ -72,27 +75,17 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        if (savedInstanceState!=null){
-            TextView textHR = (TextView) findViewById(R.id.textHR);
-            TextView textRR = (TextView) findViewById(R.id.textRR);
-
-            HR = savedInstanceState.getFloat("HR");
-            RR = savedInstanceState.getFloat("BR");
-
-            textHR.setText(""+HR);
-            textRR.setText(""+RR);
-        }
-
         db = new DatabaseHelper(this);
         Button button = (Button) findViewById(R.id.buttonSymptoms);
         button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 Intent i = new Intent(getApplicationContext(), SymptomsActivity.class);
+                i.putExtra("HR", HR);
+                i.putExtra("RR", RR);
                 startActivity(i);
             }
         });
-
     }
 
     @Override
@@ -101,29 +94,21 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         arraySymptoms = (float[]) getIntent().getSerializableExtra("arraySymptoms");
     }
 
-    @Override
-    public void onSensorChanged(SensorEvent event) {
-        accZaxis.add((double) event.values[2]);
-    }
 
     @Override
-    public void onSaveInstanceState(Bundle savedInstanceState) {
-        super.onSaveInstanceState(savedInstanceState);
-        savedInstanceState.putFloat("HR", HR);
-        savedInstanceState.putFloat("BR", RR);
+    protected void onSaveInstanceState(@NonNull Bundle outState) {
+        outState.putFloat("HR", HR);
+        outState.putFloat("RR", RR);
+        super.onSaveInstanceState(outState);
     }
 
-    @Override
-    public void onRestoreInstanceState(@Nullable Bundle savedInstanceState) {
-        super.onRestoreInstanceState(savedInstanceState);
+    private void updateTexts(){
         TextView textHR = (TextView) findViewById(R.id.textHR);
         TextView textRR = (TextView) findViewById(R.id.textRR);
 
-        HR = savedInstanceState.getFloat("HR");
-        RR = savedInstanceState.getFloat("BR");
-
         textHR.setText(""+HR);
         textRR.setText(""+RR);
+
     }
 
     private void processRR(){
@@ -294,6 +279,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     public void saveDataToDB(View view) {
         float[] readingsArray = new float[12];
+
+
         if(arraySymptoms == null){ arraySymptoms = new float[10]; Arrays.fill(arraySymptoms, 0);}
 
         readingsArray[0] = Float.parseFloat(df.format(HR));
@@ -302,6 +289,11 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         db.saveDataToUserReadings("Alberto", readingsArray);
 
+    }
+
+    @Override
+    public void onSensorChanged(SensorEvent event) {
+        accZaxis.add((double) event.values[2]);
     }
 
     public class processVideoThread implements Runnable{

@@ -27,7 +27,8 @@
             </intent-filter>
         </activity>
 
-        <activity android:name=".SymptomsActivity">
+        <activity android:name=".SymptomsActivity"
+            android:parentActivityName=".MainActivity">
 
         </activity>
 
