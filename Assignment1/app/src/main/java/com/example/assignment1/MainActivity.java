@@ -106,8 +106,8 @@ public class MainActivity extends Activity implements SensorEventListener, Seria
         TextView textHR = (TextView) findViewById(R.id.textHR);
         TextView textRR = (TextView) findViewById(R.id.textRR);
 
-        textHR.setText(""+HR);
-        textRR.setText(""+RR);
+        textRR.setText("RR: "+RR+" bpm");
+        textHR.setText("HR: "+HR+" bpm");
 
     }
 
@@ -126,8 +126,8 @@ public class MainActivity extends Activity implements SensorEventListener, Seria
         nPeaks -= 2; // Remove the beginning and end peaks of getting close to the chest
         bpm = (nPeaks*60.)/elapsedTime;
 
-        textRR.setText("BPM: "+df.format(bpm));
-        Toast.makeText(this, "P: "+nPeaks+" BPM: "+bpm, Toast.LENGTH_LONG).show();
+        textRR.setText("RR: "+df.format(bpm)+" bpm");
+        Toast.makeText(this, "P: "+nPeaks+" BPM: "+df.format(bpm), Toast.LENGTH_LONG).show();
         RR = (float) bpm;
     }
 
@@ -214,9 +214,9 @@ public class MainActivity extends Activity implements SensorEventListener, Seria
             avg_HR += foo.getAvgHR();
         }
 
-        textHR.setText("HR: "+df.format(avg_HR/chunks));
+        textHR.setText("HR: "+df.format(avg_HR/chunks)+" bpm");
         Log.d(TAG, "[+]: Final average Heart Rate "+avg_HR/chunks);
-        Toast.makeText(this, "[+]: Final average Heart Rate "+avg_HR/chunks, Toast.LENGTH_LONG).show();
+        Toast.makeText(this, "[+]: Final average Heart Rate "+df.format(avg_HR/chunks), Toast.LENGTH_LONG).show();
         HR = (float) (avg_HR/chunks);
     }
 
@@ -288,7 +288,10 @@ public class MainActivity extends Activity implements SensorEventListener, Seria
         System.arraycopy(arraySymptoms, 0, readingsArray, 2, arraySymptoms.length);
 
         db.saveDataToUserReadings("Alberto", readingsArray);
-
+        Toast.makeText(this, "Saved data to database successfully", Toast.LENGTH_LONG).show();
+        HR = 0;
+        RR = 0;
+        updateTexts();
     }
 
     @Override
