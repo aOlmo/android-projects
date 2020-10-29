@@ -7,19 +7,26 @@ import androidx.core.app.ActivityCompat;
 
 import android.Manifest;
 import android.app.Activity;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.StrictMode;
 import android.provider.MediaStore;
+import android.provider.Settings;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -60,6 +67,9 @@ public class MainActivity extends Activity implements SensorEventListener, Seria
     private Vector<Double> accZaxis = new Vector<>();
     private DecimalFormat df = new DecimalFormat("##");
 
+    private LocationManager locationManager;
+    private LocationListener locationListener;
+
     static final int REQUEST_VIDEO_CAPTURE = 1;
 
     static {
@@ -67,6 +77,20 @@ public class MainActivity extends Activity implements SensorEventListener, Seria
             Log.d(TAG, "OpenCV loaded successfully");
         } else {
             Log.d(TAG, "OpenCV not loaded properly");
+        }
+    }
+
+    public class LocationBroadcastReceiver extends BroadcastReceiver{
+        @Override
+        public void onReceive(Context context, Intent intent) {
+
+            if (intent.getAction().equals("ACT_LOC")){
+                double lat = intent.getDoubleExtra("latitude", 0f);
+                double lon = intent.getDoubleExtra("longitude", 0f);
+                Toast.makeText(MainActivity.this,
+                        "Latitude is "+lat+" Longitude: "+lon, Toast.LENGTH_LONG).show();
+
+            }
         }
     }
 
@@ -88,12 +112,47 @@ public class MainActivity extends Activity implements SensorEventListener, Seria
         });
     }
 
+    void startService(){
+        LocationBroadcastReceiver receiver = new LocationBroadcastReceiver();
+        IntentFilter filter = new IntentFilter("ACT_LOC");
+        registerReceiver(receiver, filter);
+
+        Intent intent = new Intent(MainActivity.this, LocationService.class);
+        startService(intent);
+    }
+
+
+    public void startGPSservice(View view){
+        if (Build.VERSION.SDK_INT >= 23){
+            if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED){
+                requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
+            } else {
+                startService();
+            }
+
+        } else {
+            startService();
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        switch (requestCode){
+            case 1:
+                if(grantResults[0] == PackageManager.PERMISSION_GRANTED){
+                    startService();
+                } else {
+                    Toast.makeText(this, "Give me permissions", Toast.LENGTH_LONG).show();
+                }
+        }
+    }
+
     @Override
     protected void onResume(){
         super.onResume();
         arraySymptoms = (float[]) getIntent().getSerializableExtra("arraySymptoms");
     }
-
 
     @Override
     protected void onSaveInstanceState(@NonNull Bundle outState) {

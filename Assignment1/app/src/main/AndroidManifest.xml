@@ -10,6 +10,8 @@
     <uses-sdk tools:overrideLibrary="com.arthenica.mobileffmpeg"/>
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.INTERNET"/>
 
     <application
         android:requestLegacyExternalStorage="true"
@@ -29,8 +31,9 @@
 
         <activity android:name=".SymptomsActivity"
             android:parentActivityName=".MainActivity">
-
         </activity>
+
+        <service android:name=".LocationService" />
 
     </application>
 
