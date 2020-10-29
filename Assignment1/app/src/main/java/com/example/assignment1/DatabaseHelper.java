@@ -13,10 +13,14 @@ import java.util.Arrays;
 public class DatabaseHelper extends SQLiteOpenHelper {
     private static SQLiteDatabase db;
     private static String TAG = "Database";
-    public static final String TABLE_NAME = "UserReadings";
+    public static final String USER_READ_TABLE = "UserReadings";
+    public static final String USER_GPS_TABLE = "UserGPSReadings";
     public static final String DATABASE_NAME = "Assignment1.db";
     public static String[] COLS = {"NAME","HR","BR","NAUSEA","HEADACHE","DIARRHEA", "SOAR_THROAT",
             "FEVER","MUSCLE_ACHE","LOSS_SMELL_TASTE","COUGH","SHORTNESS_BREATH","TIRED"};
+
+    public static String[] GPS_COLS = {"NAME", "LATITUDE", "LONGITUDE", "TIMESTAMP"};
+    public static String GPS_CREATE_TABLE = "(NAME varchar(255), LATITUDE double, LONGITUDE double, TIMESTAMP timestamp)";
 
     public DatabaseHelper(@Nullable Context context) {
         super(context, DATABASE_NAME, null, 1);
@@ -45,8 +49,12 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         }
 
         Log.d(TAG, "Command: "+command);
-        String final_command = String.format("CREATE TABLE %s (%s)", TABLE_NAME, command);
+        String final_command = String.format("CREATE TABLE %s (%s)", USER_READ_TABLE, command);
         db.execSQL(final_command);
+
+        // Create GPS table
+        db.execSQL(String.format("CREATE TABLE %s %s", USER_GPS_TABLE, GPS_CREATE_TABLE));
+
     }
 
     @Override
@@ -64,4 +72,13 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         db.execSQL(cmd);
     }
 
+    public void saveGPSData(String name, double lat, double lon){
+        Long tsLong = System.currentTimeMillis()/1000;
+        String ts = tsLong.toString();
+        String cmd;
+        cmd = String.format("INSERT INTO UserGPSReadings(%s, %s, %s, %s)", GPS_COLS);
+        cmd += String.format(" VALUES ('%s', %s, %s, %s)", name, lat, lon, ts);
+        Log.d(TAG, cmd);
+        db.execSQL(cmd);
+    }
 }

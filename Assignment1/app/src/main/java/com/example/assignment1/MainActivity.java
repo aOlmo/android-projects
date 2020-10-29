@@ -89,6 +89,7 @@ public class MainActivity extends Activity implements SensorEventListener, Seria
                 Toast.makeText(MainActivity.this,
                         "Latitude is "+lat+" Longitude: "+lon, Toast.LENGTH_LONG).show();
                 textViewGPS.setText("Latitude: "+lat+" Longitude: "+lon);
+                db.saveGPSData("Alberto", lat, lon);
             }
         }
     }
