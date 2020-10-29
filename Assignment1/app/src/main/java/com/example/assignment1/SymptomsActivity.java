@@ -34,8 +34,6 @@ public class SymptomsActivity extends Activity implements PopupMenu.OnMenuItemCl
 
     private int curSymptomID;
     private float curStarRating;
-    private float HR;
-    private float RR;
 
     public SymptomsActivity(){
         Arrays.fill(arraySymptoms, 0);
@@ -60,11 +58,12 @@ public class SymptomsActivity extends Activity implements PopupMenu.OnMenuItemCl
 
     }
 
-    public void goBack(View v){
-        Intent intent = NavUtils.getParentActivityIntent(this);
-        intent.putExtra("arraySymptoms", arraySymptoms);
-//        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        NavUtils.navigateUpTo(this, intent);
+    @Override
+    protected void onPause() {
+        super.onPause();
+        Intent locIntent = new Intent("ACT_SYM");
+        locIntent.putExtra("arraySymptoms", arraySymptoms);
+        sendBroadcast(locIntent);
     }
 
     public void showPopup(View v){

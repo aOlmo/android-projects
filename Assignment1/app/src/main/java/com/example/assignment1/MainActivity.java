@@ -42,6 +42,7 @@ import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.videoio.VideoCapture;
 import org.opencv.videoio.Videoio;
+import org.w3c.dom.Text;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -54,8 +55,8 @@ import java.util.Vector;
 
 public class MainActivity extends Activity implements SensorEventListener, Serializable {
 
-    private float HR = 0;
-    private float RR = 0;
+    private float HR;
+    private float RR;
     private long end;
     private long start;
     private Uri fileUri;
@@ -66,9 +67,6 @@ public class MainActivity extends Activity implements SensorEventListener, Seria
     private static String TAG = "MainActivity";
     private Vector<Double> accZaxis = new Vector<>();
     private DecimalFormat df = new DecimalFormat("##");
-
-    private LocationManager locationManager;
-    private LocationListener locationListener;
 
     static final int REQUEST_VIDEO_CAPTURE = 1;
 
@@ -83,13 +81,25 @@ public class MainActivity extends Activity implements SensorEventListener, Seria
     public class LocationBroadcastReceiver extends BroadcastReceiver{
         @Override
         public void onReceive(Context context, Intent intent) {
+            TextView textViewGPS = (TextView) findViewById(R.id.textViewGPS);
 
             if (intent.getAction().equals("ACT_LOC")){
                 double lat = intent.getDoubleExtra("latitude", 0f);
                 double lon = intent.getDoubleExtra("longitude", 0f);
                 Toast.makeText(MainActivity.this,
                         "Latitude is "+lat+" Longitude: "+lon, Toast.LENGTH_LONG).show();
+                textViewGPS.setText("Latitude: "+lat+" Longitude: "+lon);
+            }
+        }
+    }
 
+    public class SymptomsBroadcastReceiver extends BroadcastReceiver{
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent.getAction().equals("ACT_SYM")){
+                arraySymptoms = intent.getFloatArrayExtra("arraySymptoms");
+                Toast.makeText(getApplicationContext(), "arraySymptoms received", Toast.LENGTH_LONG).show();
+                updateTexts();
             }
         }
     }
@@ -97,6 +107,7 @@ public class MainActivity extends Activity implements SensorEventListener, Seria
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // TODO: The problem is here, it keeps being destroyed while it shouldnt
         setContentView(R.layout.activity_main);
 
         db = new DatabaseHelper(this);
@@ -104,9 +115,11 @@ public class MainActivity extends Activity implements SensorEventListener, Seria
         button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                SymptomsBroadcastReceiver SymReceiver = new SymptomsBroadcastReceiver();
+                IntentFilter SymFilter = new IntentFilter("ACT_SYM");
+                registerReceiver(SymReceiver, SymFilter);
+
                 Intent i = new Intent(getApplicationContext(), SymptomsActivity.class);
-                i.putExtra("HR", HR);
-                i.putExtra("RR", RR);
                 startActivity(i);
             }
         });
@@ -123,11 +136,16 @@ public class MainActivity extends Activity implements SensorEventListener, Seria
 
 
     public void startGPSservice(View view){
+        final LocationManager manager = (LocationManager) getSystemService( Context.LOCATION_SERVICE );
+
         if (Build.VERSION.SDK_INT >= 23){
             if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED){
                 requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
             } else {
                 startService();
+                if (!manager.isProviderEnabled( LocationManager.GPS_PROVIDER )){
+                    Toast.makeText(this, "Please enable GPS location", Toast.LENGTH_LONG).show();
+                }
             }
 
         } else {
@@ -148,26 +166,13 @@ public class MainActivity extends Activity implements SensorEventListener, Seria
         }
     }
 
-    @Override
-    protected void onResume(){
-        super.onResume();
-        arraySymptoms = (float[]) getIntent().getSerializableExtra("arraySymptoms");
-    }
-
-    @Override
-    protected void onSaveInstanceState(@NonNull Bundle outState) {
-        outState.putFloat("HR", HR);
-        outState.putFloat("RR", RR);
-        super.onSaveInstanceState(outState);
-    }
-
     private void updateTexts(){
         TextView textHR = (TextView) findViewById(R.id.textHR);
         TextView textRR = (TextView) findViewById(R.id.textRR);
+        Toast.makeText(getApplicationContext(), "HR: "+HR+" RR: "+RR, Toast.LENGTH_LONG).show();
 
         textRR.setText("RR: "+RR+" bpm");
         textHR.setText("HR: "+HR+" bpm");
-
     }
 
     private void processRR(){
