@@ -111,7 +111,23 @@
         android:layout_marginTop="403dp"
         android:layout_marginBottom="148dp"
         android:onClick="startGPSservice"
-        android:text="Save GPS data to DB"
+        android:text="Start tracking GPS data"
+        app:layout_constraintBottom_toTopOf="@+id/textViewGPS"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.0" />
+
+    <Button
+        android:id="@+id/buttonStopSaveGPS"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="403dp"
+        android:layout_marginBottom="148dp"
+        android:onClick="stopGPSservice"
+        android:text="Stop tracking GPS data"
+        android:visibility="gone"
         app:layout_constraintBottom_toTopOf="@+id/textViewGPS"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.5"
@@ -125,12 +141,24 @@
         android:layout_height="0dp"
         android:layout_marginTop="449dp"
         android:layout_marginBottom="128dp"
-        android:text=""
+        android:text="Longitude:\n Latitude:"
         app:layout_constraintBottom_toTopOf="@+id/startRR"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintStart_toEndOf="@+id/buttonSaveGPS"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
+
+    <Button
+        android:id="@+id/buttonDataServer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="34dp"
+        android:text="Send GPS data to server"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@+id/buttonSaveGPS"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toStartOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

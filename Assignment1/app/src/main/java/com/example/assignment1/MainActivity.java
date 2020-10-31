@@ -67,7 +67,7 @@ public class MainActivity extends Activity implements SensorEventListener, Seria
     private static String TAG = "MainActivity";
     private Vector<Double> accZaxis = new Vector<>();
     private DecimalFormat df = new DecimalFormat("##");
-
+    private LocationBroadcastReceiver locReceiver;
     static final int REQUEST_VIDEO_CAPTURE = 1;
 
     static {
@@ -78,6 +78,8 @@ public class MainActivity extends Activity implements SensorEventListener, Seria
         }
     }
 
+
+
     public class LocationBroadcastReceiver extends BroadcastReceiver{
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -86,10 +88,11 @@ public class MainActivity extends Activity implements SensorEventListener, Seria
             if (intent.getAction().equals("ACT_LOC")){
                 double lat = intent.getDoubleExtra("latitude", 0f);
                 double lon = intent.getDoubleExtra("longitude", 0f);
-                Toast.makeText(MainActivity.this,
-                        "Latitude is "+lat+" Longitude: "+lon, Toast.LENGTH_LONG).show();
+//                Toast.makeText(MainActivity.this,
+//                        "Latitude is "+lat+" Longitude: "+lon, Toast.LENGTH_LONG).show();
                 textViewGPS.setText("Latitude: "+lat+" Longitude: "+lon);
                 db.saveGPSData("Alberto", lat, lon);
+
             }
         }
     }
@@ -108,7 +111,6 @@ public class MainActivity extends Activity implements SensorEventListener, Seria
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // TODO: The problem is here, it keeps being destroyed while it shouldnt
         setContentView(R.layout.activity_main);
 
         db = new DatabaseHelper(this);
@@ -127,16 +129,18 @@ public class MainActivity extends Activity implements SensorEventListener, Seria
     }
 
     void startService(){
-        LocationBroadcastReceiver receiver = new LocationBroadcastReceiver();
+        locReceiver = new LocationBroadcastReceiver();
         IntentFilter filter = new IntentFilter("ACT_LOC");
-        registerReceiver(receiver, filter);
+        registerReceiver(locReceiver, filter);
 
         Intent intent = new Intent(MainActivity.this, LocationService.class);
         startService(intent);
     }
 
-
     public void startGPSservice(View view){
+        Button startGPS = (Button) findViewById(R.id.buttonSaveGPS);
+        Button stopGPS = (Button) findViewById(R.id.buttonStopSaveGPS);
+
         final LocationManager manager = (LocationManager) getSystemService( Context.LOCATION_SERVICE );
 
         if (Build.VERSION.SDK_INT >= 23){
@@ -146,12 +150,35 @@ public class MainActivity extends Activity implements SensorEventListener, Seria
                 startService();
                 if (!manager.isProviderEnabled( LocationManager.GPS_PROVIDER )){
                     Toast.makeText(this, "Please enable GPS location", Toast.LENGTH_LONG).show();
+                } else {
+                    startGPS.setVisibility(View.GONE);
+                    stopGPS.setVisibility(View.VISIBLE);
                 }
             }
 
         } else {
             startService();
+            startGPS.setVisibility(View.GONE);
+            stopGPS.setVisibility(View.VISIBLE);
         }
+    }
+
+    public void stopGPSservice(View view) {
+        Button startGPS = (Button) findViewById(R.id.buttonSaveGPS);
+        Button stopGPS = (Button) findViewById(R.id.buttonStopSaveGPS);
+        Button buttonDataServer = (Button) findViewById(R.id.buttonDataServer);
+
+        unregisterReceiver(locReceiver);
+
+        Intent intent = new Intent(MainActivity.this, LocationService.class);
+        stopService(intent);
+        Toast.makeText(getApplicationContext(), "GPS service stopped", Toast.LENGTH_LONG).show();
+
+        startGPS.setVisibility(View.VISIBLE);
+        stopGPS.setVisibility(View.GONE);
+        buttonDataServer.setVisibility(View.VISIBLE);
+
+
     }
 
     @Override
@@ -325,8 +352,7 @@ public class MainActivity extends Activity implements SensorEventListener, Seria
     }
 
     public static void write (String filename, Object[] x) {
-        filename = Environment.getExternalStorageDirectory().getAbsolutePath()
-                + filename;
+        filename = Environment.getExternalStorageDirectory().getAbsolutePath() + filename;
 
         try {
         BufferedWriter outputWriter = null;

@@ -13,9 +13,15 @@ import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 
 import androidx.annotation.Nullable;
+
+import java.net.HttpURLConnection;
+import java.net.URLConnection;
+
 public class LocationService extends Service {
     FusedLocationProviderClient fusedLocationProviderClient;
     LocationCallback locationCallback;
+
+    URLConnection connection;
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -30,7 +36,7 @@ public class LocationService extends Service {
             @Override
             public void onLocationResult(LocationResult locationResult) {
                 super.onLocationResult(locationResult);
-                Log.d("MYLOG", "Lat is: "+locationResult.getLastLocation().getLatitude()+
+                Log.d("LocationService", "Lat is: "+locationResult.getLastLocation().getLatitude()+
                         "Lng is: "+locationResult.getLastLocation().getLongitude());
                 Intent intent = new Intent("ACT_LOC");
                 intent.putExtra("latitude", locationResult.getLastLocation().getLatitude());
@@ -53,4 +59,5 @@ public class LocationService extends Service {
         locationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
         fusedLocationProviderClient.requestLocationUpdates(locationRequest, locationCallback, Looper.myLooper());
     }
+
 }
