@@ -14,14 +14,9 @@ import com.google.android.gms.location.LocationServices;
 
 import androidx.annotation.Nullable;
 
-import java.net.HttpURLConnection;
-import java.net.URLConnection;
-
 public class LocationService extends Service {
     FusedLocationProviderClient fusedLocationProviderClient;
     LocationCallback locationCallback;
-
-    URLConnection connection;
 
     @Override
     public IBinder onBind(Intent intent) {

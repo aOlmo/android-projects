@@ -156,6 +156,7 @@
         android:layout_marginBottom="34dp"
         android:text="Send GPS data to server"
         android:visibility="gone"
+        android:onClick="sendDBToServer"
         app:layout_constraintBottom_toTopOf="@+id/buttonSaveGPS"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.5"

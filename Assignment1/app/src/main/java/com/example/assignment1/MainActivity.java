@@ -78,8 +78,6 @@ public class MainActivity extends Activity implements SensorEventListener, Seria
         }
     }
 
-
-
     public class LocationBroadcastReceiver extends BroadcastReceiver{
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -128,7 +126,12 @@ public class MainActivity extends Activity implements SensorEventListener, Seria
         });
     }
 
-    void startService(){
+    public void sendDBToServer(View view) {
+        File dbFile = getApplicationContext().getDatabasePath(DatabaseHelper.DATABASE_NAME);
+        db.sendDBToServer(dbFile);
+    }
+
+    public void startService(){
         locReceiver = new LocationBroadcastReceiver();
         IntentFilter filter = new IntentFilter("ACT_LOC");
         registerReceiver(locReceiver, filter);
@@ -177,8 +180,6 @@ public class MainActivity extends Activity implements SensorEventListener, Seria
         startGPS.setVisibility(View.VISIBLE);
         stopGPS.setVisibility(View.GONE);
         buttonDataServer.setVisibility(View.VISIBLE);
-
-
     }
 
     @Override
