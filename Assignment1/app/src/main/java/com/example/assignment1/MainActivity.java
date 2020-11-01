@@ -128,7 +128,17 @@ public class MainActivity extends Activity implements SensorEventListener, Seria
 
     public void sendDBToServer(View view) {
         File dbFile = getApplicationContext().getDatabasePath(DatabaseHelper.DATABASE_NAME);
-        db.sendDBToServer(dbFile);
+        Button saveGPSData = findViewById(R.id.buttonDataServer);
+
+        boolean success = db.sendDBToServer(dbFile);
+
+        if(success){
+            Toast.makeText(getApplicationContext(), "GPS data uploaded successfully", Toast.LENGTH_LONG).show();
+            saveGPSData.setVisibility(View.GONE);
+        } else {
+            Toast.makeText(getApplicationContext(), "Server error when uploading data", Toast.LENGTH_LONG).show();
+        }
+
     }
 
     public void startService(){

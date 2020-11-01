@@ -3,14 +3,20 @@ package com.example.assignment1;
 import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.os.Build;
 import android.os.Environment;
+import android.os.FileUtils;
 import android.os.StrictMode;
 import android.util.Log;
+import android.widget.Button;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -19,11 +25,14 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.ProtocolException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.nio.file.Files;
+import java.security.cert.CRL;
 import java.util.Arrays;
 
 public class DatabaseHelper extends SQLiteOpenHelper {
@@ -98,50 +107,47 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         db.execSQL(cmd);
     }
 
-    public void sendDBToServer(File dbFile){
+    @RequiresApi(api = Build.VERSION_CODES.KITKAT)
+    public boolean sendDBToServer(File dbFile){
         StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
         StrictMode.setThreadPolicy(policy);
 
-        HttpURLConnection httpUrlConnection;
-        URL url;
         String boundary = Long.toHexString(System.currentTimeMillis());
         String CRLF = "\r\n";
         String charset = "UTF-8";
 
         try {
-            url = new URL("http://192.168.1.32/upload_video.php");
+            String upload_file_var = "uploaded_file";
+            HttpURLConnection httpUrlConnection;
+            URL url = new URL("http://192.168.1.32/upload_video.php");
             httpUrlConnection = (HttpURLConnection) url.openConnection();
-
-//            httpUrlConnection.setUseCaches(false);
-//            httpUrlConnection.setDoOutput(true);
+            httpUrlConnection.setUseCaches(false);
+            httpUrlConnection.setDoOutput(true);
 
             httpUrlConnection.setRequestMethod("POST");
             httpUrlConnection.setRequestProperty("Connection", "Keep-Alive");
             httpUrlConnection.setRequestProperty("Cache-Control", "no-cache");
-            httpUrlConnection.setRequestProperty("Content-Type", "multipart/form-data; boundary=--" + boundary);
+            httpUrlConnection.setRequestProperty(
+                    "Content-Type", "multipart/form-data;boundary=" + boundary);
 
-            OutputStream output = httpUrlConnection.getOutputStream();
-            PrintWriter writer = new PrintWriter(new OutputStreamWriter(output, charset), true);
+            DataOutputStream request = new DataOutputStream(httpUrlConnection.getOutputStream());
 
-            writer.append("--"+boundary).append(CRLF);
-            writer.append("Content-Disposition: form-data; name=\"uploaded_file\"; filename=\""+dbFile.getName()+"\"").append(CRLF);
-            writer.append("Content-Type: application/sql; charset="+charset).append(CRLF);
-            writer.append("--"+boundary).append(CRLF);
-            writer.append(CRLF).flush();
+            request.writeBytes("--" + boundary + CRLF);
+            request.writeBytes("Content-Disposition: form-data; name=\"" +
+                    upload_file_var + "\";filename=\"" +
+                    dbFile.getName() + "\"" + CRLF);
+            request.writeBytes(CRLF);
 
-            FileInputStream dbf = new FileInputStream(dbFile);
-
-            byte[] buffer = new byte[1024];
-            int bytesRead = 0;
-            while((bytesRead = dbf.read(buffer, 0, buffer.length))>=0){
-                output.write(buffer, 0, bytesRead);
+            byte[] fileContent = new byte[0];
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                fileContent = Files.readAllBytes(dbFile.toPath());
             }
 
-            output.flush();
-            writer.append(CRLF).flush();
-            writer.append("--"+boundary+"--").append(CRLF).flush();
+            request.write(fileContent);
+            request.writeBytes(CRLF);
+            request.writeBytes("--"+ boundary + "--" + CRLF);
 
-            int responseCode = ((HttpURLConnection) httpUrlConnection).getResponseCode();
+            int responseCode = httpUrlConnection.getResponseCode();
 
             BufferedReader br = new BufferedReader(new InputStreamReader((httpUrlConnection.getInputStream())));
             StringBuilder sb = new StringBuilder();
@@ -150,10 +156,14 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 sb.append(out);
             }
 
-            // TODO: Continue  here, apparently I am not sending the information well
-            // The php file cannot find the array
             Log.d(TAG, "Al-Message: "+sb.toString());
             Log.d(TAG, "The response code is: "+responseCode);
+
+            if(responseCode == 200 && sb.toString().contains("Uploaded")){
+                return true;
+            } else {
+                return false;
+            }
 
         } catch (MalformedURLException e) {
             e.printStackTrace();
@@ -163,5 +173,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             e.printStackTrace();
         }
 
+        return false;
     }
 }
