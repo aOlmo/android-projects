@@ -31,7 +31,7 @@
     <Button
         android:id="@+id/buttonHR"
         android:layout_width="176dp"
-        android:layout_height="47dp"
+        android:layout_height="50dp"
         android:layout_marginEnd="10dp"
         android:layout_marginRight="10dp"
         android:layout_marginBottom="84dp"
@@ -44,8 +44,8 @@
 
     <Button
         android:id="@+id/startRR"
-        android:layout_width="180dp"
-        android:layout_height="0dp"
+        android:layout_width="176dp"
+        android:layout_height="50dp"
         android:layout_marginStart="5dp"
         android:layout_marginLeft="5dp"
         android:layout_marginBottom="84dp"
@@ -75,7 +75,7 @@
 
     <Button
         android:id="@+id/buttonUploadSigns"
-        android:layout_width="374dp"
+        android:layout_width="370dp"
         android:layout_height="52dp"
         android:layout_marginStart="10dp"
         android:layout_marginLeft="10dp"
@@ -154,9 +154,9 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginBottom="34dp"
+        android:onClick="sendDBToServer"
         android:text="Send GPS data to server"
         android:visibility="gone"
-        android:onClick="sendDBToServer"
         app:layout_constraintBottom_toTopOf="@+id/buttonSaveGPS"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.5"
