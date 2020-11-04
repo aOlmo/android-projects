@@ -1,0 +1,2 @@
+sudo -H -u www-data ./model.py
+su -s /bin/bash www-data
