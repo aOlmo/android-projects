@@ -3,11 +3,14 @@ import sqlite3
 import math
 import pandas as pd
 import numpy as np
+import time
 
 from datetime import datetime
 
-N_SECS = 60
-DIST = 10  # In meters
+# Time window to check for close coordinates.
+N_SECS = 120
+DIST = 3  # In meters
+
 
 # https://www.movable-type.co.uk/scripts/latlong.html
 # Calculates the Harvesine distance passing the lat and lon values with 1e-6 precision
@@ -43,21 +46,22 @@ if __name__ == '__main__':
         locTableData = pd.DataFrame(data=col_content.T, index=col_names).T
         fd[i] = locTableData.set_index("_time_location").to_dict("index")
 
+    start = time.time()
     adj_mat = np.identity(n)
     c = 0
     for i in range(n):
         cur = fd[i]
-        for j in range(n):
+        for j in range(i, n):
             aux = fd[j]
-            if i==j:
-                continue
-            print("[+]: Doing {}-{}".format(i,j))
+            print("[+]: Doing {}-{}".format(i, j))
             for key in cur.keys():
+                if i == j or adj_mat[i, j] == 1:
+                    continue
                 Y, M, d = int(key[:4]), int(key[4:6]), int(key[6:8])
                 H, m, s = int(key[8:10]), int(key[10:12]), int(key[12:14])
 
                 cur_time = datetime(Y, M, d, H, m, s).timestamp()
-                for sec in range(0, N_SECS):
+                for sec in range(-N_SECS // 2, N_SECS // 2):
                     next_time = datetime.fromtimestamp(cur_time + sec)
                     next_time = next_time.strftime("%Y%m%d%H%M%S%a").upper()
                     if next_time in aux.keys():
@@ -65,12 +69,14 @@ if __name__ == '__main__':
                         aux_lat, aux_lon = float(aux[next_time]["_latitude"]), float(aux[next_time]["_longitude"])
                         # dist = math.sqrt((cur_lat - aux_lat) ** 2 + (cur_lon - aux_lon) ** 2)
                         dist = harvesine_distance(cur_lat / 1e6, aux_lat / 1e6, cur_lon / 1e6, aux_lon / 1e6)
-                        flag = cur_lat+aux_lat+cur_lon+aux_lon
+                        flag = cur_lat + aux_lat + cur_lon + aux_lon
                         if dist <= DIST and flag != 0.0:
-                            print("Dist={:.2f} | {} and {} | {}/{} and {}/{}".format(dist, i, j, cur_lat, aux_lat, cur_lon, aux_lon))
+                            print("Dist={:.2f} | {} and {} | {}/{} and {}/{}".format(dist, i, j, cur_lat, aux_lat,
+                                                                                     cur_lon, aux_lon))
                             adj_mat[i, j] = 1
                             adj_mat[j, i] = 1
-
+                            break
+    print("[+]: took {}s ".format(time.time() - start))
     print(adj_mat)
 
 #########################################################
