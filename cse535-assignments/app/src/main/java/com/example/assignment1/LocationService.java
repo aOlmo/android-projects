@@ -50,7 +50,7 @@ public class LocationService extends Service {
 
     private void requestLocation() {
         LocationRequest locationRequest = new LocationRequest();
-        locationRequest.setInterval(5000);
+        locationRequest.setInterval(1000);
         locationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
         fusedLocationProviderClient.requestLocationUpdates(locationRequest, locationCallback, Looper.myLooper());
     }

@@ -88,7 +88,7 @@ public class MainActivity extends Activity implements SensorEventListener, Seria
                 double lon = intent.getDoubleExtra("longitude", 0f);
 //                Toast.makeText(MainActivity.this,
 //                        "Latitude is "+lat+" Longitude: "+lon, Toast.LENGTH_LONG).show();
-                textViewGPS.setText("Latitude: "+lat+" Longitude: "+lon);
+                textViewGPS.setText("Latitude: "+lat+" Longitude: "+lon+"\nUpdates every 1s");
                 db.saveGPSData("Alberto", lat, lon);
 
             }
@@ -129,14 +129,18 @@ public class MainActivity extends Activity implements SensorEventListener, Seria
     public void sendDBToServer(View view) {
         File dbFile = getApplicationContext().getDatabasePath(DatabaseHelper.DATABASE_NAME);
         Button saveGPSData = findViewById(R.id.buttonDataServer);
+        TextView txtDB = findViewById(R.id.textGPSDatabase);
 
         boolean success = db.sendDBToServer(dbFile);
 
         if(success){
             Toast.makeText(getApplicationContext(), "GPS data uploaded successfully", Toast.LENGTH_LONG).show();
             saveGPSData.setVisibility(View.GONE);
+            txtDB.setText("GPS data saved on DB successfully");
         } else {
             Toast.makeText(getApplicationContext(), "Server error when uploading data", Toast.LENGTH_LONG).show();
+            txtDB.setText("Error saving GPS data to DB");
+
         }
 
     }
@@ -144,7 +148,8 @@ public class MainActivity extends Activity implements SensorEventListener, Seria
     public void startService(){
         locReceiver = new LocationBroadcastReceiver();
         IntentFilter filter = new IntentFilter("ACT_LOC");
-        registerReceiver(locReceiver, filter);
+//        registerReceiver(locReceiver, filter);
+        getApplicationContext().registerReceiver(locReceiver, filter);
 
         Intent intent = new Intent(MainActivity.this, LocationService.class);
         startService(intent);
@@ -180,8 +185,10 @@ public class MainActivity extends Activity implements SensorEventListener, Seria
         Button startGPS = (Button) findViewById(R.id.buttonSaveGPS);
         Button stopGPS = (Button) findViewById(R.id.buttonStopSaveGPS);
         Button buttonDataServer = (Button) findViewById(R.id.buttonDataServer);
+        TextView txtLoc = findViewById(R.id.textViewGPS);
 
-        unregisterReceiver(locReceiver);
+        getApplicationContext().unregisterReceiver(locReceiver);
+        txtLoc.setText("Longitude:\n Latitude:");
 
         Intent intent = new Intent(MainActivity.this, LocationService.class);
         stopService(intent);
