@@ -8,9 +8,8 @@ import time
 from datetime import datetime
 
 # Time window to check for close coordinates.
-N_SECS = 120
+N_SECS = 30
 DIST = 3  # In meters
-
 
 # https://www.movable-type.co.uk/scripts/latlong.html
 # Calculates the Harvesine distance passing the lat and lon values with 1e-6 precision
@@ -53,7 +52,7 @@ if __name__ == '__main__':
         cur = fd[i]
         for j in range(i, n):
             aux = fd[j]
-            print("[+]: Doing {}-{}".format(i, j))
+            #print("[+]: Doing {}-{}".format(i, j))
             for key in cur.keys():
                 if i == j or adj_mat[i, j] == 1:
                     continue
@@ -71,12 +70,13 @@ if __name__ == '__main__':
                         dist = harvesine_distance(cur_lat / 1e6, aux_lat / 1e6, cur_lon / 1e6, aux_lon / 1e6)
                         flag = cur_lat + aux_lat + cur_lon + aux_lon
                         if dist <= DIST and flag != 0.0:
-                            print("Dist={:.2f} | {} and {} | {}/{} and {}/{}".format(dist, i, j, cur_lat, aux_lat,
-                                                                                     cur_lon, aux_lon))
+                            #print("Dist={:.2f} | {} and {} | {}/{} and {}/{}".format(dist, i, j, cur_lat, aux_lat,
+                            print("Found {} and {} at a distance of {:.2f}m at time {}".format(i, j, dist, next_time))
                             adj_mat[i, j] = 1
                             adj_mat[j, i] = 1
                             break
-    print("[+]: took {}s ".format(time.time() - start))
+    print("[+]: Processing took {:.2f}s \n\n\n".format(time.time() - start))
+    print("-------- Adjacency matrix --------")
     print(adj_mat)
 
 #########################################################

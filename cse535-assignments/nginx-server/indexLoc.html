@@ -3,12 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <title>Title</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
+	<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.3.2/jquery.min.js"></script>
 </head>
 <body>
+
 <form action="./process.php">
-    <input type="text" name="id">
+    <input type="text" id="id1">
     <input type="date" name="date">
-    <input type="submit" value="Submit">
+    <input type="submit" value="Submit" id="bt"><div id="div1" class="spinner-border" role="status" style="display: none">
+</div>
 </form>
+
+<div id="div2" style="display: none">
+</div>
+<script type="text/javascript">
+$(document).ready(function(){ // Or $(function(){ ...
+    $("#bt").click(function () {
+    	var str = $("#id1").val();
+        $("#div1").slideToggle("fast");
+        $("#div2").slideToggle("fast");
+        $("#div2").text("Computing adjacency matrix for user "+str+"...");
+    });
+});
+</script>
 </body>
 </html>
