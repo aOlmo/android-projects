@@ -2,6 +2,8 @@ import numpy as np
 from model import compute, get_db_dict
 from collections import deque
 
+N = 11
+
 # https://codereview.stackexchange.com/questions/148399/graph-and-node-classes-with-bfs-and-dfs-functions
 class Node:
     def __init__(self, val, date):
@@ -22,8 +24,8 @@ class Node:
 class Graph:
     def __init__(self, nodes=[]):
         self.nodes = nodes
-        self.adj_mat = np.identity(12)
-        self.db_dict = get_db_dict(12)
+        self.adj_mat = np.zeros((N, N))
+        self.db_dict = get_db_dict(N)
 
     # Val here means the starting date
     def add_node(self, val, date):
@@ -48,7 +50,6 @@ class Graph:
             for nd in node.edges:
                 if nd not in visited:
                     queue.append(nd)
-                    # self.do_test(node, nd)
                     self.do_computation(nd)
                     visited.add(nd)
 
@@ -58,19 +59,8 @@ class Graph:
     def do_computation(self, root):
         compute(self, root)
 
-    def do_test(self, root, nd):
-        print("Doing {}-{}: ".format(root.val, nd.val))
-
-    def discover_neighbors(self, root):
-        if root.val == 0:
-            print("Neighbors are 1, 2")
-            self.add_node(1, "1")
-            self.add_node(2, "2")
-            self.add_edge(graph.nodes[0], graph.nodes[-2])
-            self.add_edge(graph.nodes[0], graph.nodes[-1])
-
 graph = Graph()
-graph.add_node(2, "20110412")
+graph.add_node(1, "20110614")
 
 bfs_result = graph.bfs()
 

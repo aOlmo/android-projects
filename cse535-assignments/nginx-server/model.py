@@ -77,6 +77,10 @@ def compute(graph, root):
     sel_person = fd[sel_id]
     sel_person = preproc_person_dict(sel_person, sel_dates, str_starting_date)
 
+    if not sel_person:
+        print("[-]: No data available for {} and date {}, exiting".format(sel_id, sel_date))
+        exit()
+
     for cur_id in fd:
         if cur_id == sel_id: continue
         print("[+]: Processing {}-{}".format(sel_id, cur_id))
