@@ -4,12 +4,15 @@ import math
 import pandas as pd
 import numpy as np
 import time
+import argparse
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Time window to check for close coordinates.
 N_SECS = 60
-DIST = 3  # In meters
+DIST = 5000  # In meters
+N_DAYS = 8
+
 
 # https://www.movable-type.co.uk/scripts/latlong.html
 # Calculates the Harvesine distance passing the lat and lon values with 1e-6 precision
@@ -29,10 +32,9 @@ def harvesine_distance(lat1, lat2, lon1, lon2):
     d = R * c  # distance in between in metres
     return d
 
-# 5km and 7 days
-if __name__ == '__main__':
+
+def get_db_dict(n):
     col_names = ['_latitude', '_longitude', '_time_location']
-    n = 12
     fd = {}
     for i in range(n):
         db = "db/LifeMap_GS{}.db".format(i + 1)
@@ -44,19 +46,112 @@ if __name__ == '__main__':
         # col_content[:, 2] = np.array(list(map(trim, col_content[:, 2])))
         locTableData = pd.DataFrame(data=col_content.T, index=col_names).T
         fd[i] = locTableData.set_index("_time_location").to_dict("index")
+    return fd
+
+
+def dfs(visited, graph, node):
+    if node not in visited:
+        print(node)
+        visited.add(node)
+        for neighbour in graph[node]:
+            dfs(visited, graph, neighbour)
+
+
+def preproc_person_dict(d, dates, str_starting_date):
+    preproc_dict = {key: value for key, value in d.items() if key.startswith(tuple(dates))}
+    if len(preproc_dict) == 0:
+        # print("[-]: No days found for person {} and starting date {} ".format(sel_id, str_starting_date))
+        return False
+    return preproc_dict
+
+
+# 5km and 7 days
+if __name__ == '__main__':
+    n = 12
+    fd = get_db_dict(n)
+
+    parser = argparse.ArgumentParser(description='Pass the id and date of a person and get its adjacency graph for '
+                                                 'the past 7 days before and 5km radious')
+    parser.add_argument('--id', type=int, help='ID of the person')
+    parser.add_argument('--date', help='Date to start looking for')
+
+    args = parser.parse_args()
+    id = args.id
+    date = args.date
+    # date_to_epoch()
 
     start = time.time()
     adj_mat = np.identity(n)
-    c = 0
-    print("=================================================================================================================")
-    print("[+]: Looking for matches between all 12 LifeMap_GS DBs within a {}m distance and a span of {}s before and after".format(DIST, N_SECS//2))
-    print("=================================================================================================================")
+    print(
+        "=================================================================================================================")
+    print(
+        "[+]: Looking for matches between all 12 LifeMap_GS DBs within a 5km distance and a span of 7 days from {}".format(
+            date))
+    print(
+        "=================================================================================================================")
+
+    sel_ids = [2]  # Selected ids
+    sel_date = "20110412"  # Selected date
+    Y, M, d = int(sel_date[:4]), int(sel_date[4:6]), int(sel_date[6:8])
+    starting_date = datetime(year=Y, month=M, day=d)
+    str_starting_date = starting_date.strftime("%Y%m%d")
+
+    # Get the range of days to process from each person
+    sel_dates = []
+    for i in range(N_DAYS):
+        new_date = starting_date - timedelta(days=i)
+        sel_dates.append(new_date.strftime("%Y%m%d"))
+
+    # Look for the set of people that we ask/have found during the process
+    for sel_id in sel_ids:
+        sel_person = fd[sel_id]
+        # Get only the selected dates for the selected person
+        sel_person = preproc_person_dict(sel_person, sel_dates, str_starting_date)
+        # If the returned value is false, we don't have data of the person at that date
+        if not sel_person: continue
+
+        for cur_id in fd:
+            cur_person = fd[cur_id]
+            cur_person = preproc_person_dict(cur_person, sel_dates, str_starting_date)
+            if not cur_person: continue
+
+            print("[+]: Processing {}-{}".format(sel_id, cur_id))
+
+            for cur_date, cur_pos in cur_person.items():
+                if adj_mat[sel_id, cur_id] or adj_mat[cur_id, sel_id]:
+                    # print("[+]: {}-{} was already marked as close".format(sel_id, cur_id))
+                    break
+                cur_lat, cur_lon = float(cur_pos["_latitude"]), float(cur_pos["_longitude"])
+
+                for sel_date, sel_pos in sel_person.items():
+                    sel_lat, sel_lon = float(sel_pos["_latitude"]), float(sel_pos["_longitude"])
+
+                    dist = harvesine_distance(cur_lat / 1e6, sel_lat / 1e6, cur_lon / 1e6, sel_lon / 1e6)
+
+                    err_flag = cur_lat + sel_lat + cur_lon + sel_lon
+                    if dist <= DIST and err_flag != 0.0:
+                        print("[+]: {} and {} | dist {:.2f}m times {}/{}".format(sel_id, cur_id, dist, sel_date, cur_date))
+                        adj_mat[sel_id, cur_id] = 1
+                        adj_mat[cur_id, sel_id] = 1
+                        # Add the new person of interest to process (DFS)
+                        sel_ids.append(cur_id) if not cur_id in sel_ids else 1
+                        print("[+]: Putting {} inside nodes to process: {}".format(cur_id, sel_ids))
+                        break
+        # Update the list of ids eliminating the first
+        aux = sel_ids.pop(0)
+        print("[+]: Removing {} from nodes to process: {}".format(aux, sel_ids))
+
+    # Given the current id and date, look for ALL the past 7 days of data (including that day)
+    # Extract the location information of this data and check which of them were within 5km radius
+    # Repeat the process again for the new nodes found
+
+    exit()
 
     for i in range(n):
         cur = fd[i]
         for j in range(i, n):
             aux = fd[j]
-            #print("[+]: Doing {}-{}".format(i, j))
+            # print("[+]: Doing {}-{}".format(i, j))
             for key in cur.keys():
                 if i == j or adj_mat[i, j] == 1:
                     continue
@@ -74,8 +169,10 @@ if __name__ == '__main__':
                         dist = harvesine_distance(cur_lat / 1e6, aux_lat / 1e6, cur_lon / 1e6, aux_lon / 1e6)
                         flag = cur_lat + aux_lat + cur_lon + aux_lon
                         if dist <= DIST and flag != 0.0:
-                            #print("Dist={:.2f} | {} and {} | {}/{} and {}/{}".format(dist, i, j, cur_lat, aux_lat,
-                            print("[+]: {} and {} were at a distance of {:.2f}m at times {} (user {}) and {} (user {})".format(i, j, dist, i, key, j, next_time, sec))
+                            # print("Dist={:.2f} | {} and {} | {}/{} and {}/{}".format(dist, i, j, cur_lat, aux_lat,
+                            print(
+                                "[+]: {} and {} were at a distance of {:.2f}m at times {} (user {}) and {} (user {})".format(
+                                    i, j, dist, i, key, j, next_time, sec))
                             adj_mat[i, j] = 1
                             adj_mat[j, i] = 1
                             break
