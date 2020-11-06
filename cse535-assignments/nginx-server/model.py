@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
-import sqlite3
-import math
-import pandas as pd
-import numpy as np
 import time
+import math
+import sqlite3
 import argparse
+import numpy as np
+import pandas as pd
 
+from graph import *
 from datetime import datetime, timedelta
 
 # Time window to check for close coordinates.
-N_SECS = 60
-DIST = 5000  # In meters
 N_DAYS = 8
+DIST = 5000  # In meters
+DEBUG = False
 
 # https://www.movable-type.co.uk/scripts/latlong.html
 # Calculates the Harvesine distance passing the lat and lon values with 1e-6 precision
@@ -30,7 +31,6 @@ def harvesine_distance(lat1, lat2, lon1, lon2):
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     d = R * c  # distance in between in metres
     return d
-
 
 def get_db_dict(n):
     col_names = ['_latitude', '_longitude', '_time_location']
@@ -53,16 +53,15 @@ def preproc_person_dict(d, dates, str_starting_date):
         return False
     return preproc_dict
 
-
-# 5km and 7 days
 def compute(graph, root):
     fd = graph.db_dict
     sel_date = root.date  # Selected date
     sel_id = root.val
     adj_mat = graph.adj_mat
-    print("=========================================")
-    print("[+]: COMPUTING FOR NODE {} with time {}".format(sel_id, sel_date[:8]))
-    print("=========================================")
+    if DEBUG:
+        print("=========================================")
+        print("[+]: COMPUTING FOR NODE {} with time {}".format(sel_id, sel_date[:8]))
+        print("=========================================")
 
     Y, M, d = int(sel_date[:4]), int(sel_date[4:6]), int(sel_date[6:8])
     starting_date = datetime(year=Y, month=M, day=d)
@@ -78,12 +77,12 @@ def compute(graph, root):
     sel_person = preproc_person_dict(sel_person, sel_dates, str_starting_date)
 
     if not sel_person:
-        print("[-]: No data available for {} and date {}, exiting".format(sel_id, sel_date))
+        print("[-]: No data available for {} and date {}. Exiting...".format(sel_id, sel_date))
         exit()
 
     for cur_id in fd:
         if cur_id == sel_id: continue
-        print("[+]: Processing {}-{}".format(sel_id, cur_id))
+        print("[+]: Processing {}-{}".format(sel_id, cur_id)) if DEBUG else 0
 
         cur_person = fd[cur_id]
         cur_person = preproc_person_dict(cur_person, sel_dates, str_starting_date)
@@ -100,14 +99,39 @@ def compute(graph, root):
 
                 err_flag = cur_lat + sel_lat + cur_lon + sel_lon
                 if dist <= DIST and err_flag != 0.0:
-                    print("[+]: {} and {} | dist {:.2f}m times {}/{}".format(sel_id, cur_id, dist, sel_date, cur_date))
+                    print("[+]: {} and {} | dist {:.2f}m times {}/{}".format(sel_id, cur_id, dist, sel_date, cur_date)) if DEBUG else 0
                     adj_mat[sel_id, cur_id] = 1
                     adj_mat[cur_id, sel_id] = 1
 
                     new_node = graph.add_node(cur_id, cur_date)
                     graph.add_edge(root, new_node)
-                    print("[+]: Putting {} as new node to process".format(cur_id))
+                    print("[+]: Putting {} as new node to process".format(cur_id)) if DEBUG else 0
                     break
+
+if __name__ == '__main__':
+    N = 11
+    start = time.time()
+
+    parser = argparse.ArgumentParser(description='Pass the id and date of a person and get its adjacency graph for '
+                                                     'the past 7 days before and 5km radious')
+    parser.add_argument('--id', default=1, type=int, help='ID of the person')
+    parser.add_argument('--date', default="20110614", help='Date to start looking for')
+
+    args = parser.parse_args()
+    id = args.id
+    date = args.date
+
+    graph = Graph(N)
+    graph.add_node(id, date)
+
+    # Do BFS
+    adj_mat = graph.bfs()
+
+    print("======================================")
+    print("Adjacency Matrix for person {} and date {}".format(id, date))
+    print("======================================")
+    print(adj_mat)
+    print("\n[+]: Total elapsed time {:.3f}s".format(time.time() - start))
 
 
 #########################################################
