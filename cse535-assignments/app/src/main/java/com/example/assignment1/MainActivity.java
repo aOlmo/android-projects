@@ -146,6 +146,20 @@ public class MainActivity extends Activity implements SensorEventListener, Seria
         request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "out.dat");
 
         downloadmanager.enqueue(request);
+
+        Uri uri2 = Uri.parse("http://192.168.1.32/www-data-folder/Assignment2.db");
+
+        DownloadManager.Request request2 = new DownloadManager.Request(uri2);
+        request2.setTitle("DB file");
+        request2.setDescription("Downloading");
+        request2.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+        request2.setVisibleInDownloadsUi(false);
+        request2.setMimeType("text/plain");
+        request2.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "Assignment2.db");
+
+        downloadmanager.enqueue(request2);
+
+
         dwnlBtn.setVisibility(View.GONE);
     }
 

@@ -40,7 +40,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private static String TAG = "Database";
     public static final String USER_READ_TABLE = "UserReadings";
     public static final String USER_GPS_TABLE = "UserGPSReadings";
-    public static final String DATABASE_NAME = "Assignment1.db";
+    public static final String DATABASE_NAME = "Assignment2.db";
     public static String[] COLS = {"NAME","HR","BR","NAUSEA","HEADACHE","DIARRHEA", "SOAR_THROAT",
             "FEVER","MUSCLE_ACHE","LOSS_SMELL_TASTE","COUGH","SHORTNESS_BREATH","TIRED"};
 
