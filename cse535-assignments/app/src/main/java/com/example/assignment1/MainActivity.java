@@ -7,6 +7,7 @@ import androidx.core.app.ActivityCompat;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.DownloadManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -44,11 +45,15 @@ import org.opencv.videoio.VideoCapture;
 import org.opencv.videoio.Videoio;
 import org.w3c.dom.Text;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.Serializable;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.text.DecimalFormat;
 import java.util.Arrays;
 import java.util.Vector;
@@ -126,10 +131,29 @@ public class MainActivity extends Activity implements SensorEventListener, Seria
         });
     }
 
+    public void makeDownload(View view){
+        Button dwnlBtn = findViewById(R.id.buttonDownload);
+
+        DownloadManager downloadmanager = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
+        Uri uri = Uri.parse("http://192.168.1.32/www-data-folder/out.dat");
+
+        DownloadManager.Request request = new DownloadManager.Request(uri);
+        request.setTitle("My File");
+        request.setDescription("Downloading");
+        request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+        request.setVisibleInDownloadsUi(false);
+        request.setMimeType("text/plain");
+        request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "out.dat");
+
+        downloadmanager.enqueue(request);
+        dwnlBtn.setVisibility(View.GONE);
+    }
+
     public void sendDBToServer(View view) {
         File dbFile = getApplicationContext().getDatabasePath(DatabaseHelper.DATABASE_NAME);
         Button saveGPSData = findViewById(R.id.buttonDataServer);
         TextView txtDB = findViewById(R.id.textGPSDatabase);
+        Button dwnlBtn = findViewById(R.id.buttonDownload);
 
         boolean success = db.sendDBToServer(dbFile);
 
@@ -137,6 +161,13 @@ public class MainActivity extends Activity implements SensorEventListener, Seria
             Toast.makeText(getApplicationContext(), "GPS data uploaded successfully", Toast.LENGTH_LONG).show();
             saveGPSData.setVisibility(View.GONE);
             txtDB.setText("GPS data saved on DB successfully");
+
+            Uri uriUrl = Uri.parse("http://192.168.1.32/");
+            Intent launchBrowser = new Intent(Intent.ACTION_VIEW, uriUrl);
+            startActivity(launchBrowser);
+
+            dwnlBtn.setVisibility(View.VISIBLE);
+
         } else {
             Toast.makeText(getApplicationContext(), "Server error when uploading data", Toast.LENGTH_LONG).show();
             txtDB.setText("Error saving GPS data to DB");

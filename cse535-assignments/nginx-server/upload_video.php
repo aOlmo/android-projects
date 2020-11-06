@@ -10,7 +10,7 @@ print_r($_POST);
 
 echo getcwd() . "\n";
 
-$file_path = "/var/www/html/cse565-a2/uploads/";
+$file_path = "/var/www/html/cse565-a2/www-data-folder/";
 
 $file = $file_path . basename($_FILES['uploaded_file']['name']);
 

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import sys
 import time
 import math
 import sqlite3
@@ -133,6 +134,15 @@ if __name__ == '__main__':
     print(adj_mat)
     print("\n[+]: Total elapsed time {:.3f}s".format(time.time() - start))
 
+    std_o = sys.stdout
+    with open("www-data-folder/out.dat", "w") as f:
+        sys.stdout = f
+        print("======================================")
+        print("Adjacency Matrix for person {} and date {}".format(id, date))
+        print("======================================")
+        print(adj_mat)
+        print("\n[+]: Total elapsed time {:.3f}s".format(time.time() - start))
+    sys.stdout = std_o
 
 #########################################################
 # print(harvesine_distance(37.561812, 37.561822, 126.935396, 126.935386)) # 1.419
