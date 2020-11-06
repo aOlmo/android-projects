@@ -8,7 +8,7 @@ import time
 from datetime import datetime
 
 # Time window to check for close coordinates.
-N_SECS = 30
+N_SECS = 60
 DIST = 3  # In meters
 
 # https://www.movable-type.co.uk/scripts/latlong.html
@@ -29,7 +29,7 @@ def harvesine_distance(lat1, lat2, lon1, lon2):
     d = R * c  # distance in between in metres
     return d
 
-
+# 5km and 7 days
 if __name__ == '__main__':
     col_names = ['_latitude', '_longitude', '_time_location']
     n = 12
@@ -48,6 +48,10 @@ if __name__ == '__main__':
     start = time.time()
     adj_mat = np.identity(n)
     c = 0
+    print("=================================================================================================================")
+    print("[+]: Looking for matches between all 12 LifeMap_GS DBs within a {}m distance and a span of {}s before and after".format(DIST, N_SECS//2))
+    print("=================================================================================================================")
+
     for i in range(n):
         cur = fd[i]
         for j in range(i, n):
@@ -71,11 +75,11 @@ if __name__ == '__main__':
                         flag = cur_lat + aux_lat + cur_lon + aux_lon
                         if dist <= DIST and flag != 0.0:
                             #print("Dist={:.2f} | {} and {} | {}/{} and {}/{}".format(dist, i, j, cur_lat, aux_lat,
-                            print("Found {} and {} at a distance of {:.2f}m at time {}".format(i, j, dist, next_time))
+                            print("[+]: {} and {} were at a distance of {:.2f}m at times {} (user {}) and {} (user {})".format(i, j, dist, i, key, j, next_time, sec))
                             adj_mat[i, j] = 1
                             adj_mat[j, i] = 1
                             break
-    print("[+]: Processing took {:.2f}s \n\n\n".format(time.time() - start))
+    print("\n\n\n[+]: Processing took {:.2f}s".format(time.time() - start))
     print("-------- Adjacency matrix --------")
     print(adj_mat)
 
